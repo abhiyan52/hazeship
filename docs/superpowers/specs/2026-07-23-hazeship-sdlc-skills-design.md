@@ -48,10 +48,10 @@ project/repo names, keep the SDLC logic unchanged.
 **Need genericizing (3)**:
 
 - **`review`** — the 3-lane review currently hardcodes a "PHI/HIPAA
-  compliance" lane. Becomes a **configurable compliance lane**: off by
-  default; a project enables it by supplying its own checklist at
-  `_shared/compliance-checklist.md`. The skill checks for that file's
-  existence before running the compliance lane.
+  compliance" lane. That lane is dropped entirely; `review` becomes a
+  **2-lane review**: (1) correctness, security & code quality, (2) design &
+  requirements alignment. No PHI/compliance checking, configurable or
+  otherwise, ships in this kit.
 - **`checkpoint` / `raise-pr`** — currently reference "the workspace's
   required format" for commit messages and branch naming. Becomes: read
   conventions from `_shared/branch-commit-conventions.md`, shipped with
@@ -66,21 +66,22 @@ project/repo names, keep the SDLC logic unchanged.
 
 ## `_shared/` templates
 
-`skills/sdlc/_shared/` ships four files:
+`skills/sdlc/_shared/` ships three files:
 
 - `repo-map.template.md` — placeholder structure (repo names, key paths,
   lint/test commands) with instructions for a project to fill in its own.
   Sensor's actual repo-map becomes the worked example referenced from
   comments, not shipped content.
-- `compliance-checklist.template.md` — placeholder structure for an optional
-  domain compliance lane (sensor's PHI/HIPAA checklist serves as the
-  inspiration/example in a comment, not shipped verbatim).
 - `branch-commit-conventions.md` — ships with generic, usable-out-of-the-box
   defaults (not a template — works as-is, overridable).
 - `handoff-format.md` — already generic; ships as-is with minor sensor
   references stripped.
 
-Any skill referencing `_shared/` docs points at these four files.
+No compliance/PHI checklist file ships in this kit. `checkpoint`'s
+pre-commit gate also drops its "no PHI in diff's log statements" scan step —
+that check goes away along with the compliance lane.
+
+Any skill referencing `_shared/` docs points at these three files.
 
 ## Packaging
 
@@ -99,9 +100,8 @@ Extend `tests/test_repository.py`:
 - One assertion per new skill: `SKILL.md` exists with `name:` and
   `description:` frontmatter, and `agents/openai.yaml` exists.
 - A guard test that greps `_shared/*.template.md` and all 14 `SKILL.md`
-  files for leaked sensor specifics (`Sensor`, `PHI`, `HIPAA` outside the
-  templates' own placeholder/example comments) and fails if found outside
-  the allowed template comment blocks.
+  files for leaked sensor specifics (`Sensor`, `PHI`, `HIPAA`) and fails if
+  any are found — these terms should not appear anywhere in the ported kit.
 - Version assertions updated to `0.2.0` where the foundation tests currently
   assert `0.1.0`.
 
