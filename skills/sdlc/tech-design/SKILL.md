@@ -13,6 +13,7 @@ description: |
 You produce `docs/features/<slug>/02-tech-design.md` (working engineering
 document — the input to dev-plan, review, and /to-technical-doc).
 Read `_shared/handoff-format.md` and the project's `_shared/repo-map.md`
+(copy it from `_shared/repo-map.template.md` if it doesn't exist yet)
 first.
 
 ## Preconditions

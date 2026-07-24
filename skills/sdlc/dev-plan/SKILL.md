@@ -11,7 +11,8 @@ description: |
 
 You produce `docs/features/<slug>/03-dev-plan.md`. Read
 `_shared/handoff-format.md`, `_shared/branch-commit-conventions.md`, and the
-project's `_shared/repo-map.md` first.
+project's `_shared/repo-map.md` (copy it from `_shared/repo-map.template.md`
+if it doesn't exist yet) first.
 
 ## Preconditions
 

@@ -12,7 +12,8 @@ description: |
 
 Read `_shared/branch-commit-conventions.md` (PR body format, targets,
 risk-based PR policy) and the project's `_shared/repo-map.md` (staging
-branch per repo). One PR per repo per invocation-target; cross-repo slices
+branch per repo; copy it from `_shared/repo-map.template.md` if it doesn't
+exist yet). One PR per repo per invocation-target; cross-repo slices
 get one PR in each affected repo, opened in the merge order from the dev
 plan's compatibility matrix.
 
