@@ -37,7 +37,8 @@ the feature branch (not a new bug branch) so they merge with the PR.
 3. **Make the docs truthful**: update the tech design to as-built (diagrams
    too; if a `technical-doc.md` exists, regenerate it via
    `/to-technical-doc`), annotate the dev plan, correct the project's
-   `_shared/repo-map.md` where commands/URLs proved wrong.
+   `_shared/repo-map.md` (copy it from `_shared/repo-map.template.md` if it
+   doesn't exist yet) where commands/URLs proved wrong.
 4. **Capture loop lessons**: for every feedback item, ask "which pipeline
    stage should have caught this?" and record the concrete edit to that
    skill/template/checklist in the lessons table. Propose the edits to the
