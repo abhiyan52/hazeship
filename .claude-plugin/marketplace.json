@@ -1,0 +1,16 @@
+{
+  "name": "abhiyanhaze",
+  "owner": {
+    "name": "abhiyanhaze"
+  },
+  "description": "Reusable skills from abhiyanhaze.",
+  "plugins": [
+    {
+      "name": "hazeship",
+      "source": "./",
+      "description": "Cross-agent skills including a Nepali greeting.",
+      "category": "productivity",
+      "keywords": ["skills", "nepali", "greeting"]
+    }
+  ]
+}

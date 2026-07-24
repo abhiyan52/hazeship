@@ -1,0 +1,24 @@
+{
+  "name": "hazeship",
+  "version": "0.1.0",
+  "description": "Reusable cross-agent skills from abhiyanhaze.",
+  "author": {
+    "name": "abhiyanhaze",
+    "email": "abhiyan.timilsina@doctustech.com",
+    "url": "https://github.com/abhiyanhaze"
+  },
+  "homepage": "https://github.com/abhiyanhaze/hazeship",
+  "repository": "https://github.com/abhiyanhaze/hazeship",
+  "license": "MIT",
+  "keywords": ["agent-skills", "nepali", "productivity"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Hazeship",
+    "shortDescription": "Reusable cross-agent skills",
+    "longDescription": "Install reusable skills maintained by abhiyanhaze.",
+    "developerName": "abhiyanhaze",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "Use $say-hello to greet me in Nepali."
+  }
+}

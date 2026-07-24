@@ -1,0 +1,11 @@
+{
+  "name": "hazeship",
+  "version": "0.1.0",
+  "description": "Reusable cross-agent skills from abhiyanhaze.",
+  "author": {
+    "name": "abhiyanhaze"
+  },
+  "repository": "https://github.com/abhiyanhaze/hazeship",
+  "license": "MIT",
+  "skills": ["./skills/productivity/say-hello"]
+}
