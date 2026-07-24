@@ -1,0 +1,6 @@
+interface:
+  display_name: "Say Hello"
+  short_description: "Return a deterministic Nepali greeting"
+  default_prompt: "Use $say-hello to greet me in Nepali."
+policy:
+  allow_implicit_invocation: false
