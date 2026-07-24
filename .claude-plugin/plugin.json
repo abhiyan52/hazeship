@@ -1,11 +1,27 @@
 {
   "name": "hazeship",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Reusable cross-agent skills from abhiyanhaze.",
   "author": {
     "name": "abhiyanhaze"
   },
   "repository": "https://github.com/abhiyanhaze/hazeship",
   "license": "MIT",
-  "skills": ["./skills/productivity/say-hello"]
+  "skills": [
+    "./skills/productivity/say-hello",
+    "./skills/sdlc/feature-intake",
+    "./skills/sdlc/tech-design",
+    "./skills/sdlc/dev-plan",
+    "./skills/sdlc/implement-slice",
+    "./skills/sdlc/validate-feature",
+    "./skills/sdlc/raise-pr",
+    "./skills/sdlc/review",
+    "./skills/sdlc/retro",
+    "./skills/sdlc/team-handoff",
+    "./skills/sdlc/teach",
+    "./skills/sdlc/to-technical-doc",
+    "./skills/sdlc/checkpoint",
+    "./skills/sdlc/qa-playwright",
+    "./skills/sdlc/seed-data"
+  ]
 }
