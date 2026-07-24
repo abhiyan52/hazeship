@@ -1,0 +1,6 @@
+interface:
+  display_name: "To Technical Doc"
+  short_description: "Produce the shareable stakeholder-facing technical design doc + DOCX"
+  default_prompt: "Use $to-technical-doc to produce the stakeholder deliverable for this feature."
+policy:
+  allow_implicit_invocation: false

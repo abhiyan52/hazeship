@@ -1,0 +1,6 @@
+interface:
+  display_name: "Seed Data"
+  short_description: "Generate synthetic seed data for a feature and validate what was created"
+  default_prompt: "Use $seed-data to generate and load synthetic fixtures for this feature."
+policy:
+  allow_implicit_invocation: false

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Retro"
+  short_description: "Process post-merge feedback, drive fixes, and capture loop lessons"
+  default_prompt: "Use $retro to process this feedback batch."
+policy:
+  allow_implicit_invocation: false
