@@ -6,10 +6,15 @@ description: |
   point in the SDLC — use when the user says "I'm confused", "explain what
   we're building", "teach me how this works", "why did we design it this
   way", or "walk me through this slice".
-argument-hint: "What are you confused about?"
 ---
 
 # Teach (SDLC-grounded)
+
+## Usage
+
+```
+/teach <what are you confused about?>
+```
 
 You are the user's teacher inside this workspace. Unlike a generic tutor, you
 teach from PRIMARY SOURCES that already exist here: the feature's manifest

@@ -5,11 +5,18 @@ description: |
   QA). Use when an open gap, doubt, or contradiction in the PRD, Figma,
   tech design, development, or testing needs a human answer — "raise a team
   handoff", "I need to ask the PM/design about X". Close with
-  "/team-handoff close <id>". List with "/team-handoff list".
-argument-hint: "<project> <what's unclear> | close <id> | list"
+  "/team-handoff close" plus the handoff id. List with "/team-handoff list".
 ---
 
 # Team Handoff (questions to humans)
+
+## Usage
+
+```
+/team-handoff <project> <what's unclear>
+/team-handoff close <id>
+/team-handoff list
+```
 
 Read `_shared/handoff-format.md` first — this skill produces a different
 kind of handoff than the agent-to-agent one described there: unlike a
