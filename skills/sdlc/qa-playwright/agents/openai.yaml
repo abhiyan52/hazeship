@@ -1,0 +1,6 @@
+interface:
+  display_name: "QA Playwright"
+  short_description: "Author and run Playwright scenarios from the dev plan and record evidence"
+  default_prompt: "Use $qa-playwright to verify this slice with Playwright."
+policy:
+  allow_implicit_invocation: false

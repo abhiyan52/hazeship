@@ -1,0 +1,6 @@
+interface:
+  display_name: "Review"
+  short_description: "Two-lane PR review for correctness/security/quality and design/requirements"
+  default_prompt: "Use $review to review this PR."
+policy:
+  allow_implicit_invocation: false

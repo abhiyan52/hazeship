@@ -1,0 +1,6 @@
+interface:
+  display_name: "Checkpoint"
+  short_description: "Create a formatted commit following the project's conventions"
+  default_prompt: "Use $checkpoint to commit this change."
+policy:
+  allow_implicit_invocation: false
