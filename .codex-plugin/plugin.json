@@ -1,6 +1,6 @@
 {
   "name": "hazeship",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "A cross-agent SDLC skill kit for any software project.",
   "author": {
     "name": "abhiyan52",
@@ -10,7 +10,13 @@
   "homepage": "https://github.com/abhiyan52/hazeship",
   "repository": "https://github.com/abhiyan52/hazeship",
   "license": "MIT",
-  "keywords": ["agent-skills", "sdlc", "development", "code-review", "qa"],
+  "keywords": [
+    "agent-skills",
+    "sdlc",
+    "development",
+    "code-review",
+    "qa"
+  ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Hazeship",

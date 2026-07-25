@@ -28,6 +28,9 @@ commands, data-handling rules) it reads from one file you fill in.
 - `seed-data` — Generate synthetic seed scripts/data for a feature and populate the local dev database.
 - `persistent-memory` — Store and retrieve durable project context for other skills in a resolved memory store.
 - `ssh-readonly-investigation` — Investigate a remote host over SSH strictly read-only, with connection facts from `repo-map.md`.
+- `triage` — Turn a support ticket into an evidence-backed diagnosis (data/config, code bug, not-a-bug, or needs-info) without changing any system.
+- `bugfix` — Lightweight bug loop: failing test first, minimal fix, Playwright on the affected flow, ship via `commit-pr` on a `bug/*` branch.
+- `address-pr-comments` — Fetch unresolved review threads, fix the clear-cut ones behind a per-batch test gate, and reply with commit + test evidence.
 
 ### Productivity
 
@@ -91,6 +94,15 @@ The feature loop, and who moves it:
 `/checkpoint`, `/commit-pr`, `/qa-playwright`, `/seed-data`, `/teach`,
 `/team-handoff`, `/to-technical-doc`, `/persistent-memory` and
 `/ssh-readonly-investigation` are helpers, usable at any point.
+
+Not everything is a feature. Three standalone workflows cover the rest of
+the daily work, reusing the same helpers and gates:
+
+| Work | Skill | Chain |
+|---|---|---|
+| Support ticket | `/triage` | `persistent-memory` → `ssh-readonly-investigation` → verdict (may hand off to `/bugfix`) |
+| Bug | `/bugfix` | failing test → minimal fix → `qa-playwright` → user verifies → `commit-pr` |
+| Review feedback | `/address-pr-comments` | fetch threads → classify → fix + test gate per batch → `checkpoint` → reply with evidence |
 
 ## Generic Agent Skills installation
 

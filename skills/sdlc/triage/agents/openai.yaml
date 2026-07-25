@@ -1,0 +1,6 @@
+interface:
+  display_name: "Triage"
+  short_description: "Turn a support ticket into an evidence-backed diagnosis, read-only"
+  default_prompt: "Use $triage to diagnose this client issue."
+policy:
+  allow_implicit_invocation: false

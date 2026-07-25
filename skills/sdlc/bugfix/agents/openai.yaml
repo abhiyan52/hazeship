@@ -1,0 +1,6 @@
+interface:
+  display_name: "Bugfix"
+  short_description: "Failing test first, minimal fix, verified flow, PR on a bug/* branch"
+  default_prompt: "Use $bugfix to fix this bug test-first."
+policy:
+  allow_implicit_invocation: false

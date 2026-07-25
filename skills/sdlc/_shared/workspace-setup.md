@@ -18,10 +18,12 @@ the directory containing `docs/features/`.
 │   └── repo-map.md            # this project's repos, commands, data rules
 ├── docs/
 │   ├── adr/                   # architecture decision records
+│   ├── bugs/<slug>/           # one folder per bug (report.md, by /bugfix)
 │   ├── features/<slug>/       # one folder per feature (manifest + artifacts)
 │   ├── learning/              # cross-cutting lessons from /teach
 │   ├── team-handoff/<project>/# tracked questions to humans
-│   └── templates/             # the document templates below
+│   ├── templates/             # the document templates below
+│   └── triage/                # dated triage reports (by /triage)
 ├── seeds/                     # synthetic fixtures (created by seed-data)
 └── tools/
     ├── sdlc                   # the feature state machine
@@ -71,6 +73,7 @@ the single most common cause of a skill guessing wrong.
 | `retro.md` | `05-retro.md` | retro |
 | `team-handoff.md` | `docs/team-handoff/<project>/<NNN>-<topic>.md` | team-handoff |
 | `technical-doc.md` | `technical-doc.md` + `.docx` | to-technical-doc |
+| `bug-report.md` | `docs/bugs/<slug>/report.md` | bugfix |
 
 ## `tools/sdlc`
 

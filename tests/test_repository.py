@@ -40,6 +40,9 @@ SDLC_SKILLS = [
     "commit-pr",
     "persistent-memory",
     "ssh-readonly-investigation",
+    "triage",
+    "bugfix",
+    "address-pr-comments",
 ]
 
 FULL_SKILLS_ARRAY = [
@@ -61,6 +64,9 @@ FULL_SKILLS_ARRAY = [
     "./skills/sdlc/commit-pr",
     "./skills/sdlc/persistent-memory",
     "./skills/sdlc/ssh-readonly-investigation",
+    "./skills/sdlc/triage",
+    "./skills/sdlc/bugfix",
+    "./skills/sdlc/address-pr-comments",
 ]
 
 SHARED = ROOT / "skills" / "sdlc" / "_shared"
@@ -75,6 +81,7 @@ TEMPLATES = [
     "retro.md",
     "team-handoff.md",
     "technical-doc.md",
+    "bug-report.md",
 ]
 
 SHARED_DOCS = [
@@ -125,7 +132,7 @@ class HazeshipRepositoryTests(unittest.TestCase):
             (ROOT / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8")
         )
         self.assertEqual(manifest["name"], "hazeship")
-        self.assertEqual(manifest["version"], "0.3.0")
+        self.assertEqual(manifest["version"], "0.4.0")
         self.assertEqual(manifest["skills"], "./skills/")
 
     def test_codex_marketplace(self):
@@ -153,7 +160,7 @@ class HazeshipRepositoryTests(unittest.TestCase):
             )
         )
         self.assertEqual(manifest["name"], "hazeship")
-        self.assertEqual(manifest["version"], "0.3.0")
+        self.assertEqual(manifest["version"], "0.4.0")
         self.assertEqual(manifest["skills"], FULL_SKILLS_ARRAY)
         self.assertEqual(marketplace["plugins"][0]["source"], "./")
 
@@ -415,7 +422,14 @@ class HazeshipRepositoryTests(unittest.TestCase):
 
     def test_new_skills_carry_no_source_project_details(self):
         markers = ("proptech", "doppler", "/Users/", "TTS brain")
-        for name in ("persistent-memory", "ssh-readonly-investigation", "commit-pr"):
+        for name in (
+            "persistent-memory",
+            "ssh-readonly-investigation",
+            "commit-pr",
+            "triage",
+            "bugfix",
+            "address-pr-comments",
+        ):
             skill_dir = ROOT / "skills" / "sdlc" / name
             for path in sorted(skill_dir.rglob("*")):
                 if not path.is_file():
@@ -439,6 +453,42 @@ class HazeshipRepositoryTests(unittest.TestCase):
             with self.subTest(template=filename):
                 self.assertTrue((templates / filename).exists())
         self.assertTrue(os.access(RESOLVER, os.X_OK), f"{RESOLVER} is not executable")
+
+    def test_triage_is_readonly_and_delegates(self):
+        content = (
+            ROOT / "skills" / "sdlc" / "triage" / "SKILL.md"
+        ).read_text(encoding="utf-8")
+        # Diagnosis only: it drives the read-only investigation skill and
+        # hands fixes to bugfix; it never fixes anything itself.
+        self.assertIn("ssh-readonly-investigation", content)
+        self.assertIn("persistent-memory", content)
+        self.assertIn("bugfix", content)
+        self.assertIn("Diagnosis only", content)
+
+    def test_bugfix_requires_failing_test_and_delegates(self):
+        content = (
+            ROOT / "skills" / "sdlc" / "bugfix" / "SKILL.md"
+        ).read_text(encoding="utf-8")
+        self.assertIn("failing test", content.lower())
+        self.assertIn("qa-playwright", content)
+        self.assertIn("commit-pr", content)
+        self.assertIn("bug-report.md", content)
+        self.assertIn("bug/<short-desc>", content)
+        # No manifest state machine for bugs — the report is the record.
+        self.assertNotIn("tools/sdlc", content)
+
+    def test_address_pr_comments_gates_and_never_resolves(self):
+        content = (
+            ROOT / "skills" / "sdlc" / "address-pr-comments" / "SKILL.md"
+        ).read_text(encoding="utf-8")
+        # Resolution state only exists in the GraphQL API.
+        self.assertIn("gh api graphql", content)
+        self.assertIn("isResolved", content)
+        self.assertIn("Never resolve threads", content)
+        self.assertIn("checkpoint", content)
+        self.assertIn("qa-playwright", content)
+        # Replies are outward-facing: posted only after the user confirms.
+        self.assertIn("confirms the batch", content)
 
     def test_commit_pr_delegates_instead_of_duplicating(self):
         content = (

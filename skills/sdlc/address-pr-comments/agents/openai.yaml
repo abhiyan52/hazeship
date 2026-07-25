@@ -1,0 +1,6 @@
+interface:
+  display_name: "Address PR Comments"
+  short_description: "Fix reviewer comments with a per-batch test gate and evidence-backed replies"
+  default_prompt: "Use $address-pr-comments to handle the review feedback on this PR."
+policy:
+  allow_implicit_invocation: false
