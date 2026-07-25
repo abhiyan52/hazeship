@@ -1,0 +1,6 @@
+interface:
+  display_name: "Persistent Memory"
+  short_description: "Read/write durable project context in the resolved memory store"
+  default_prompt: "Use $persistent-memory to recall what we already know about this project."
+policy:
+  allow_implicit_invocation: false

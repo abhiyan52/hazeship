@@ -1,0 +1,26 @@
+skill_key: <skill-key>
+project_key: <project-key>
+
+# Durable, structured facts only. Delete keys that don't apply; add your own.
+# Never store secrets — record where a credential lives, not its value.
+
+repos:
+  - name: <repo-name>
+    path: <path>
+    default_branch: <branch>
+
+environments:
+  - name: <staging|production|...>
+    host_label: <label matching repo-map "Remote hosts" table>
+    notes: <region, tenancy, anything durable>
+
+commands:
+  checks: <lint/typecheck/test command>
+  app_shell: <command that opens the app's shell, if any>
+
+pointers:
+  secrets: <secret-manager path or credential-file location — not the values>
+  logs: <where logs land>
+
+open_questions:
+  - <question waiting on a human answer>

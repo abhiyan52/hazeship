@@ -1,0 +1,6 @@
+interface:
+  display_name: "Commit + PR"
+  short_description: "Commit via checkpoint, push, then open the PR via raise-pr"
+  default_prompt: "Use $commit-pr to commit this, push, and open the PR."
+policy:
+  allow_implicit_invocation: false

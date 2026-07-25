@@ -1,0 +1,6 @@
+interface:
+  display_name: "SSH Read-only Investigation"
+  short_description: "Investigate a remote host over SSH without changing any state"
+  default_prompt: "Use $ssh-readonly-investigation to investigate this on the host, read-only."
+policy:
+  allow_implicit_invocation: false

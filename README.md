@@ -22,8 +22,27 @@ Reusable skills for Claude Code, Codex, and agents that support the Agent Skills
 - `teach` — Generate short lessons explaining what's being built, grounded in the feature's actual artifacts and code.
 - `to-technical-doc` — Produce the shareable Technical Design document (+ DOCX) for stakeholders.
 - `checkpoint` — Create a commit in the project's required format, validating branch naming first.
+- `commit-pr` — One-shot commit + push + PR: runs `checkpoint`, pushes, then `raise-pr`.
 - `qa-playwright` — Automated browser verification of a slice or feature via the project's Playwright QA runner.
 - `seed-data` — Generate synthetic seed scripts/data for a feature and populate the local dev database.
+- `persistent-memory` — Store and retrieve durable project context for other skills in a resolved memory store.
+- `ssh-readonly-investigation` — Investigate a remote host over SSH strictly read-only, with connection facts from `repo-map.md`.
+
+## Per-project setup
+
+The SDLC skills read project-specific facts from `skills/sdlc/_shared/repo-map.md`.
+Copy `skills/sdlc/_shared/repo-map.template.md` to that path and fill it in once
+per project.
+
+`persistent-memory` additionally needs a store root. It resolves one in this
+order: `$HAZESHIP_MEMORY_DIR`, then the nearest `.hazeship/` marker directory
+found walking up from the current directory (honouring `HAZESHIP_MEMORY_DIR` in
+its `config.env`), and otherwise proposes `<repo root>/.hazeship/memory`. To
+create the default store explicitly:
+
+```bash
+skills/sdlc/persistent-memory/scripts/resolve-memory-root.sh --init --why
+```
 
 ## Generic Agent Skills installation
 
