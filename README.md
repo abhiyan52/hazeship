@@ -104,6 +104,26 @@ the daily work, reusing the same helpers and gates:
 | Bug | `/bugfix` | failing test → minimal fix → `qa-playwright` → user verifies → `commit-pr` |
 | Review feedback | `/address-pr-comments` | fetch threads → classify → fix + test gate per batch → `checkpoint` → reply with evidence |
 
+## Keeping installed projects up to date
+
+`bin/hazeship-sync` propagates the kit into every registered project — the
+project-level `.claude/skills/` copies, per-subrepo symlinks (kept out of
+git via each repo's local `.git/info/exclude`), and any new document
+templates. Skills a project added itself are never touched; skills removed
+from the kit are pruned from the projects.
+
+```bash
+bin/hazeship-sync add <project-root>   # register once (also syncs)
+bin/hazeship-sync                      # after any change to the kit
+bin/hazeship-sync list                 # what's registered
+```
+
+Put it on your PATH so it works from anywhere:
+
+```bash
+ln -sfn "$(pwd)/bin/hazeship-sync" ~/.local/bin/hazeship-sync
+```
+
 ## Generic Agent Skills installation
 
 ```bash

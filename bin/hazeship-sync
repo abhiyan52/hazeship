@@ -1,0 +1,142 @@
+#!/usr/bin/env bash
+# hazeship-sync — propagate this kit's skills into every registered project.
+#
+#   hazeship-sync                  sync all registered projects
+#   hazeship-sync add <path>       register a project root, then sync it
+#   hazeship-sync remove <path>    unregister a project (files are left alone)
+#   hazeship-sync list             show registered projects
+#   hazeship-sync --help
+#
+# What a sync does, per project:
+#   1. copies every kit skill into <project>/.claude/skills/<name>/
+#      (rsync --delete inside each skill dir, so edits and removals in the
+#      kit propagate; skills the project added itself are never touched)
+#   2. copies new document templates into <project>/docs/templates (cp -n:
+#      customized templates are never overwritten)
+#   3. for every git subrepo directly under the project root: symlinks each
+#      kit skill into <subrepo>/.claude/skills/, keeps the symlinks out of
+#      git via .git/info/exclude, and removes dangling kit symlinks
+#   4. prunes project-level skill dirs that this tool installed earlier but
+#      that no longer exist in the kit (tracked in .hazeship-kit-skills)
+#
+# Registry: ~/.config/hazeship/projects.conf — one absolute project root per
+# line, '#' comments allowed.
+
+set -euo pipefail
+
+# resolve our real location even when invoked through a symlink on PATH
+SELF="${BASH_SOURCE[0]}"
+while [ -L "$SELF" ]; do
+  target="$(readlink "$SELF")"
+  case "$target" in
+    /*) SELF="$target" ;;
+    *)  SELF="$(dirname "$SELF")/$target" ;;
+  esac
+done
+KIT_DIR="$(cd "$(dirname "$SELF")/.." && pwd)/skills/sdlc"
+REGISTRY="${HAZESHIP_SYNC_REGISTRY:-$HOME/.config/hazeship/projects.conf}"
+
+die() { echo "hazeship-sync: $*" >&2; exit 1; }
+
+[ -d "$KIT_DIR" ] || die "kit not found at $KIT_DIR"
+
+usage() { sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+
+registered_projects() {
+  [ -f "$REGISTRY" ] || return 0
+  grep -v '^\s*#' "$REGISTRY" | grep -v '^\s*$' || true
+}
+
+kit_skills() {
+  # every skill dir plus _shared; names only
+  for d in "$KIT_DIR"/*/; do basename "${d%/}"; done
+}
+
+sync_project() {
+  local root="$1"
+  [ -d "$root" ] || { echo "  SKIP $root (missing)"; return; }
+  local skills_dir="$root/.claude/skills"
+  mkdir -p "$skills_dir"
+
+  # 1. project-level copies (authoritative per skill dir)
+  local name
+  for name in $(kit_skills); do
+    rsync -a --delete "$KIT_DIR/$name/" "$skills_dir/$name/"
+  done
+
+  # 4. prune skills this tool installed that the kit no longer ships
+  local manifest="$skills_dir/.hazeship-kit-skills"
+  if [ -f "$manifest" ]; then
+    local old
+    while IFS= read -r old; do
+      [ -n "$old" ] || continue
+      if [ -d "$skills_dir/$old" ] && ! [ -d "$KIT_DIR/$old" ]; then
+        rm -rf "$skills_dir/$old"
+        echo "  pruned skill: $old"
+      fi
+    done < "$manifest"
+  fi
+  kit_skills > "$manifest"
+
+  # 2. new templates (never overwrite customized ones)
+  mkdir -p "$root/docs/templates"
+  cp -n "$KIT_DIR/_shared/templates/"* "$root/docs/templates/" 2>/dev/null || true
+
+  # 3. subrepo symlinks
+  local sub subskills gitdir n
+  for sub in "$root"/*/; do
+    sub="${sub%/}"
+    [ -e "$sub/.git" ] || continue
+    subskills="$sub/.claude/skills"
+    mkdir -p "$subskills"
+    for name in $(kit_skills); do
+      # never clobber a real (non-symlink) skill the repo owns
+      if [ -e "$subskills/$name" ] && [ ! -L "$subskills/$name" ]; then continue; fi
+      ln -sfn "../../../.claude/skills/$name" "$subskills/$name"
+    done
+    # drop dangling symlinks left by removed kit skills
+    for n in "$subskills"/*; do
+      [ -L "$n" ] && [ ! -e "$n" ] && rm -f "$n" && echo "  pruned dangling link: ${n#$root/}"
+    done
+    gitdir="$(git -C "$sub" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" || continue
+    mkdir -p "$gitdir/info"
+    grep -qxF '.claude/skills/' "$gitdir/info/exclude" 2>/dev/null || echo '.claude/skills/' >> "$gitdir/info/exclude"
+    grep -qxF '.hazeship/' "$gitdir/info/exclude" 2>/dev/null || echo '.hazeship/' >> "$gitdir/info/exclude"
+  done
+
+  echo "  OK $root ($(kit_skills | wc -l | tr -d ' ') skills)"
+}
+
+cmd="${1:-sync}"
+case "$cmd" in
+  -h|--help) usage ;;
+  list) registered_projects ;;
+  add)
+    [ $# -ge 2 ] || die "usage: hazeship-sync add <project-root>"
+    root="$(cd "$2" && pwd)" || die "no such directory: $2"
+    mkdir -p "$(dirname "$REGISTRY")"
+    touch "$REGISTRY"
+    grep -qxF "$root" "$REGISTRY" || echo "$root" >> "$REGISTRY"
+    echo "registered: $root"
+    sync_project "$root"
+    ;;
+  remove)
+    [ $# -ge 2 ] || die "usage: hazeship-sync remove <project-root>"
+    root="$(cd "$2" 2>/dev/null && pwd || echo "$2")"
+    [ -f "$REGISTRY" ] || die "no registry at $REGISTRY"
+    tmp="$(mktemp)"
+    grep -vxF "$root" "$REGISTRY" > "$tmp" || true
+    mv "$tmp" "$REGISTRY"
+    echo "unregistered: $root (project files untouched)"
+    ;;
+  sync)
+    found=0
+    while IFS= read -r root; do
+      found=1
+      echo "syncing $root"
+      sync_project "$root"
+    done < <(registered_projects)
+    [ "$found" = 1 ] || die "no projects registered — run: hazeship-sync add <project-root>"
+    ;;
+  *) die "unknown command: $cmd (see --help)" ;;
+esac

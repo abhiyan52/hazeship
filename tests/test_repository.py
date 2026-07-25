@@ -499,6 +499,70 @@ class HazeshipRepositoryTests(unittest.TestCase):
         self.assertNotIn("gh pr create --", content)
 
 
+class HazeshipSyncTests(unittest.TestCase):
+    """bin/hazeship-sync must propagate kit skills into registered projects."""
+
+    SYNC = ROOT / "bin" / "hazeship-sync"
+
+    def test_is_executable_and_has_help(self):
+        self.assertTrue(os.access(self.SYNC, os.X_OK), f"{self.SYNC} not executable")
+        result = subprocess.run(
+            [str(self.SYNC), "--help"], capture_output=True, text=True
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for command in ("add", "remove", "list", "sync"):
+            self.assertIn(command, result.stdout)
+
+    def test_add_syncs_skills_and_subrepo_symlinks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp).resolve()
+            project = tmp / "proj"
+            sub = project / "child-repo"
+            sub.mkdir(parents=True)
+            subprocess.run(
+                ["git", "init", "--quiet", str(sub)], check=True, capture_output=True
+            )
+            env = dict(
+                os.environ, HAZESHIP_SYNC_REGISTRY=str(tmp / "projects.conf")
+            )
+            result = subprocess.run(
+                [str(self.SYNC), "add", str(project)],
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+            skills = project / ".claude" / "skills"
+            for name in ("triage", "bugfix", "checkpoint", "_shared"):
+                self.assertTrue((skills / name).is_dir(), name)
+            # subrepo gets symlinks that resolve to the project-level copy
+            link = sub / ".claude" / "skills" / "triage"
+            self.assertTrue(link.is_symlink())
+            self.assertTrue((link / "SKILL.md").is_file())
+            # symlinks stay out of git via the local exclude, not .gitignore
+            exclude = (sub / ".git" / "info" / "exclude").read_text(encoding="utf-8")
+            self.assertIn(".claude/skills/", exclude)
+            status = subprocess.run(
+                ["git", "-C", str(sub), "status", "--short"],
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(status.stdout.strip(), "")
+
+            # a skill the project owns is never clobbered by a later sync
+            owned = sub / ".claude" / "skills" / "own-skill"
+            owned.mkdir()
+            (owned / "SKILL.md").write_text("mine\n", encoding="utf-8")
+            subprocess.run(
+                [str(self.SYNC)], capture_output=True, text=True, env=env, check=True
+            )
+            self.assertFalse(owned.is_symlink())
+            self.assertEqual(
+                (owned / "SKILL.md").read_text(encoding="utf-8"), "mine\n"
+            )
+
+
 class ResolveMemoryRootTests(unittest.TestCase):
     """The store root must resolve the same way every run, not by improvisation."""
 
