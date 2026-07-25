@@ -22,6 +22,9 @@
     "./skills/sdlc/to-technical-doc",
     "./skills/sdlc/checkpoint",
     "./skills/sdlc/qa-playwright",
-    "./skills/sdlc/seed-data"
+    "./skills/sdlc/seed-data",
+    "./skills/sdlc/commit-pr",
+    "./skills/sdlc/persistent-memory",
+    "./skills/sdlc/ssh-readonly-investigation"
   ]
 }

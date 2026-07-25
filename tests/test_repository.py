@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -11,6 +12,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SKILL = ROOT / "skills" / "productivity" / "say-hello"
 GREETING = "नमस्ते! तपाईंलाई हार्दिक अभिवादन।"
+
+RESOLVER = (
+    ROOT
+    / "skills"
+    / "sdlc"
+    / "persistent-memory"
+    / "scripts"
+    / "resolve-memory-root.sh"
+)
 
 SDLC_SKILLS = [
     "feature-intake",
@@ -27,6 +37,9 @@ SDLC_SKILLS = [
     "checkpoint",
     "qa-playwright",
     "seed-data",
+    "commit-pr",
+    "persistent-memory",
+    "ssh-readonly-investigation",
 ]
 
 FULL_SKILLS_ARRAY = [
@@ -45,6 +58,9 @@ FULL_SKILLS_ARRAY = [
     "./skills/sdlc/checkpoint",
     "./skills/sdlc/qa-playwright",
     "./skills/sdlc/seed-data",
+    "./skills/sdlc/commit-pr",
+    "./skills/sdlc/persistent-memory",
+    "./skills/sdlc/ssh-readonly-investigation",
 ]
 
 SHARED = ROOT / "skills" / "sdlc" / "_shared"
@@ -397,6 +413,195 @@ class HazeshipRepositoryTests(unittest.TestCase):
                     f"points the reader at the workspace bootstrap",
                 )
 
+    def test_new_skills_carry_no_source_project_details(self):
+        markers = ("proptech", "doppler", "/Users/", "TTS brain")
+        for name in ("persistent-memory", "ssh-readonly-investigation", "commit-pr"):
+            skill_dir = ROOT / "skills" / "sdlc" / name
+            for path in sorted(skill_dir.rglob("*")):
+                if not path.is_file():
+                    continue
+                content = path.read_text(encoding="utf-8")
+                for marker in markers:
+                    with self.subTest(skill=name, file=path.name, marker=marker):
+                        self.assertNotIn(marker.lower(), content.lower())
+
+    def test_repo_map_template_covers_new_skills(self):
+        content = (
+            ROOT / "skills" / "sdlc" / "_shared" / "repo-map.template.md"
+        ).read_text(encoding="utf-8")
+        self.assertIn("## Remote hosts & read-only investigation", content)
+        self.assertIn("## Persistent memory store", content)
+        self.assertIn("HAZESHIP_MEMORY_DIR", content)
+
+    def test_persistent_memory_bundles_templates(self):
+        templates = ROOT / "skills" / "sdlc" / "persistent-memory" / "templates"
+        for filename in ("README.md", "config.yaml", "logs.md", "blueprint.md"):
+            with self.subTest(template=filename):
+                self.assertTrue((templates / filename).exists())
+        self.assertTrue(os.access(RESOLVER, os.X_OK), f"{RESOLVER} is not executable")
+
+    def test_commit_pr_delegates_instead_of_duplicating(self):
+        content = (
+            ROOT / "skills" / "sdlc" / "commit-pr" / "SKILL.md"
+        ).read_text(encoding="utf-8")
+        self.assertIn("checkpoint", content)
+        self.assertIn("raise-pr", content)
+        self.assertNotIn("gh pr create --", content)
+
+
+class ResolveMemoryRootTests(unittest.TestCase):
+    """The store root must resolve the same way every run, not by improvisation."""
+
+    def run_resolver(self, start, *args, env_dir=None):
+        env = dict(os.environ)
+        env.pop("HAZESHIP_MEMORY_DIR", None)
+        if env_dir is not None:
+            env["HAZESHIP_MEMORY_DIR"] = env_dir
+        result = subprocess.run(
+            [str(RESOLVER), "--start", str(start), "--why", *args],
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        return result.returncode, result.stdout.strip(), result.stderr.strip()
+
+    def test_env_var_wins_over_marker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp).resolve()
+            (tmp / ".hazeship").mkdir()
+            code, out, err = self.run_resolver(tmp, env_dir=str(tmp / "elsewhere"))
+            self.assertEqual(code, 0)
+            self.assertEqual(out, str(tmp / "elsewhere"))
+            self.assertIn("source=env", err)
+
+    def test_nearest_marker_wins_when_walking_up(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp).resolve()
+            (tmp / ".hazeship").mkdir()
+            nested = tmp / "packages" / "api"
+            nested.mkdir(parents=True)
+            (nested / ".hazeship").mkdir()
+            deep = nested / "src" / "handlers"
+            deep.mkdir(parents=True)
+
+            code, out, err = self.run_resolver(deep)
+            self.assertEqual(code, 0)
+            self.assertEqual(out, str(nested / ".hazeship" / "memory"))
+            self.assertIn("source=marker", err)
+
+    def test_walks_up_to_the_only_marker_above(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp).resolve()
+            (tmp / ".hazeship").mkdir()
+            deep = tmp / "a" / "b" / "c"
+            deep.mkdir(parents=True)
+            code, out, _ = self.run_resolver(deep)
+            self.assertEqual(code, 0)
+            self.assertEqual(out, str(tmp / ".hazeship" / "memory"))
+
+    def test_config_env_overrides_marker_default(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp).resolve()
+            marker = tmp / ".hazeship"
+            marker.mkdir()
+            (marker / "config.env").write_text(
+                "# a comment\nHAZESHIP_MEMORY_DIR = \"/shared/store\"  # inline\n",
+                encoding="utf-8",
+            )
+            code, out, _ = self.run_resolver(tmp)
+            self.assertEqual(code, 0)
+            self.assertEqual(out, "/shared/store")
+
+    def test_config_env_relative_path_resolves_against_marker_parent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp).resolve()
+            marker = tmp / ".hazeship"
+            marker.mkdir()
+            (marker / "config.env").write_text(
+                "HAZESHIP_MEMORY_DIR=notes/memory\n", encoding="utf-8"
+            )
+            code, out, _ = self.run_resolver(tmp)
+            self.assertEqual(code, 0)
+            self.assertEqual(out, f"{tmp}/notes/memory")
+
+    def test_uninitialized_proposes_repo_root_and_exits_three(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp).resolve()
+            subprocess.run(
+                ["git", "init", "--quiet", str(tmp)], check=True, capture_output=True
+            )
+            deep = tmp / "src" / "deep"
+            deep.mkdir(parents=True)
+
+            code, out, err = self.run_resolver(deep)
+            self.assertEqual(code, 3, f"expected not-initialized exit code; {err}")
+            self.assertEqual(out, str(tmp / ".hazeship" / "memory"))
+            self.assertIn("source=default", err)
+            self.assertFalse(
+                (tmp / ".hazeship").exists(), "resolving must not create the store"
+            )
+
+    def test_init_creates_marker_config_and_buckets(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp).resolve()
+            subprocess.run(
+                ["git", "init", "--quiet", str(tmp)], check=True, capture_output=True
+            )
+            code, out, err = self.run_resolver(tmp, "--init")
+            self.assertEqual(code, 0, err)
+            self.assertEqual(out, str(tmp / ".hazeship" / "memory"))
+            self.assertTrue((tmp / ".hazeship" / "memory" / "buckets").is_dir())
+            self.assertIn(
+                "HAZESHIP_MEMORY_DIR",
+                (tmp / ".hazeship" / "config.env").read_text(encoding="utf-8"),
+            )
+
+            # Idempotent: a second resolve now finds the marker.
+            code, out2, err2 = self.run_resolver(tmp)
+            self.assertEqual(code, 0)
+            self.assertEqual(out2, out)
+            self.assertIn("source=marker", err2)
+
+    def test_worktree_resolves_to_main_checkout(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp).resolve()
+            main = tmp / "main"
+            main.mkdir()
+            git = ["git", "-C", str(main)]
+            subprocess.run([*git, "init", "--quiet"], check=True, capture_output=True)
+            subprocess.run(
+                [*git, "config", "user.email", "test@example.com"],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                [*git, "config", "user.name", "Test"], check=True, capture_output=True
+            )
+            (main / "file.txt").write_text("hi\n", encoding="utf-8")
+            subprocess.run([*git, "add", "."], check=True, capture_output=True)
+            subprocess.run(
+                [*git, "commit", "--quiet", "-m", "init"],
+                check=True,
+                capture_output=True,
+            )
+            wt = tmp / "wt"
+            subprocess.run(
+                [*git, "worktree", "add", "--quiet", str(wt), "-b", "side"],
+                check=True,
+                capture_output=True,
+            )
+
+            code, out, err = self.run_resolver(wt)
+            self.assertEqual(code, 3, err)
+            self.assertEqual(out, str(main / ".hazeship" / "memory"))
+
+    def test_rejects_unknown_argument(self):
+        code, _, err = self.run_resolver(ROOT, "--nope")
+        self.assertEqual(code, 2)
+        self.assertIn("unknown argument", err)
+
+
+class ReadmeTests(unittest.TestCase):
     def test_readme_documents_all_installers(self):
         content = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn("npx skills@latest add abhiyan52/hazeship", content)
@@ -404,6 +609,11 @@ class HazeshipRepositoryTests(unittest.TestCase):
         self.assertIn("claude plugin install hazeship@abhiyan52", content)
         self.assertIn("codex plugin marketplace add abhiyan52/hazeship", content)
         self.assertIn("codex plugin add hazeship@hazeship", content)
+
+    def test_readme_documents_memory_store_setup(self):
+        content = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn("HAZESHIP_MEMORY_DIR", content)
+        self.assertIn("resolve-memory-root.sh --init", content)
 
 
 if __name__ == "__main__":

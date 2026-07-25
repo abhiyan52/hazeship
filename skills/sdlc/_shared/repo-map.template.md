@@ -57,6 +57,40 @@ Notes:
 - To read logs, `tail`/`grep` the files above — follow your project's data
   handling rules for anything sensitive that may appear in log output.
 
+## Remote hosts & read-only investigation
+
+<!--
+Read by `ssh-readonly-investigation`. One row per environment an agent may be
+asked to inspect. Delete this section if no remote hosts are in scope.
+-->
+
+| Host label | SSH target | App path | App shell command | Secret wrapper | Logs |
+|---|---|---|---|---|---|
+| `<staging>` | `<user@host or ssh_config alias>` | `<path on host>` | `<command that opens the app's shell, e.g. a framework shell/REPL>` | `<secret-injection prefix, e.g. "<tool> run -p <project> -c <config> --command">` | `<log paths, or how to tail them>` |
+| `<production>` | `<...>` | `<...>` | `<...>` | `<...>` | `<...>` |
+
+Notes:
+- `<bastion/jump host and the hop syntax, if any>`
+- `<who may access which host, and what approval a production read needs>`
+- `<data-handling rule for anything read off these hosts — what may be pasted
+  into notes/docs and what may not>`
+- Investigation is read-only by default; widening that scope is an explicit,
+  per-request decision by the user.
+
+## Persistent memory store
+
+<!--
+Read by `persistent-memory`. Delete if the project uses the default
+`<repo root>/.hazeship/memory/`.
+-->
+
+- Store root: `<absolute path, or "default — <repo root>/.hazeship/memory/">`
+- Configured via: `<HAZESHIP_MEMORY_DIR in the shell env | HAZESHIP_MEMORY_DIR
+  in <path>/.hazeship/config.env | default marker location>`
+- Project key: `<slug used as <project-key> in bucket paths>`
+- Committed or gitignored: `<which, and why — buckets hold project context, so
+  this is a deliberate call>`
+
 ## QA credentials & environments
 
 <!--

@@ -23,8 +23,11 @@ commands, data-handling rules) it reads from one file you fill in.
 - `teach` — Generate short lessons explaining what's being built, grounded in the feature's actual artifacts and code.
 - `to-technical-doc` — Produce the shareable Technical Design document (+ DOCX) for stakeholders.
 - `checkpoint` — Create a commit in the project's required format, validating branch naming first.
+- `commit-pr` — One-shot commit + push + PR: runs `checkpoint`, pushes, then `raise-pr`.
 - `qa-playwright` — Automated browser verification of a slice or feature via the project's Playwright QA runner.
 - `seed-data` — Generate synthetic seed scripts/data for a feature and populate the local dev database.
+- `persistent-memory` — Store and retrieve durable project context for other skills in a resolved memory store.
+- `ssh-readonly-investigation` — Investigate a remote host over SSH strictly read-only, with connection facts from `repo-map.md`.
 
 ### Productivity
 
@@ -59,6 +62,20 @@ guessing at your repos.
 python3 -m pip install pyyaml   # tools/sdlc reads manifests with it
 ```
 
+Per-project facts live in the **project's** `_shared/repo-map.md`, not inside
+the kit — the installed kit is shared across projects. If you vendor the kit
+into a single repo instead, keep the map next to the template.
+
+`persistent-memory` additionally needs a store root. It resolves one in this
+order: `$HAZESHIP_MEMORY_DIR`, then the nearest `.hazeship/` marker directory
+found walking up from the current directory (honouring `HAZESHIP_MEMORY_DIR` in
+its `config.env`), and otherwise proposes `<repo root>/.hazeship/memory`. To
+create the default store explicitly:
+
+```bash
+skills/sdlc/persistent-memory/scripts/resolve-memory-root.sh --init --why
+```
+
 The feature loop, and who moves it:
 
 | Stage | Skill | Gate |
@@ -71,8 +88,9 @@ The feature loop, and who moves it:
 | final-pr | `/raise-pr` → `/review` | user merges |
 | retro | `/retro` | user signs off |
 
-`/checkpoint`, `/qa-playwright`, `/seed-data`, `/teach`, `/team-handoff` and
-`/to-technical-doc` are helpers, usable at any point.
+`/checkpoint`, `/commit-pr`, `/qa-playwright`, `/seed-data`, `/teach`,
+`/team-handoff`, `/to-technical-doc`, `/persistent-memory` and
+`/ssh-readonly-investigation` are helpers, usable at any point.
 
 ## Generic Agent Skills installation
 
