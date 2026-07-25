@@ -60,7 +60,8 @@ context paths.
 1. **Correctness, security & code quality** (`code-reviewer` agent):
    - *Correctness*: logic errors, edge cases, error handling, races, broken
      cross-repo contracts.
-   - *Security & data*: raw SQL/injection, N+1s, missing tenant scoping,
+   - *Security & data*: raw SQL/injection, N+1s, missing tenant/ownership
+     scoping,
      unsafe migrations (index add/remove without `CONCURRENTLY`, or a
      backfill in one transaction on an existing large table); unvalidated
      input crossing trust boundaries (client → backend, LLM output →

@@ -10,8 +10,9 @@ description: |
 # Retrospective
 
 You produce/extend `docs/features/<slug>/05-retro.md` from
-`docs/templates/retro.md`. A retro can run multiple times per feature (each
-feedback batch appends).
+`docs/templates/retro.md` (if the project has no `docs/templates/` or
+`tools/sdlc` yet, bootstrap them first per `_shared/workspace-setup.md`).
+A retro can run multiple times per feature (each feedback batch appends).
 
 **Pre-merge variant.** The default framing is post-merge, but this skill also
 handles a **still-open final PR** whose review produced findings to drive

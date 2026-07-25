@@ -1,11 +1,11 @@
 {
   "name": "hazeship",
-  "version": "0.2.0",
-  "description": "Reusable cross-agent skills from abhiyanhaze.",
+  "version": "0.3.0",
+  "description": "A cross-agent SDLC skill kit for any software project.",
   "author": {
-    "name": "abhiyanhaze"
+    "name": "abhiyan52"
   },
-  "repository": "https://github.com/abhiyanhaze/hazeship",
+  "repository": "https://github.com/abhiyan52/hazeship",
   "license": "MIT",
   "skills": [
     "./skills/productivity/say-hello",

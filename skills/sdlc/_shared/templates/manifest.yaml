@@ -1,0 +1,43 @@
+# Feature manifest — the single source of truth for this feature's state.
+#
+# Two write paths, strictly separated (see _shared/handoff-format.md §1):
+#   * State fields (stage, gate, slices, approvals, revision) change ONLY
+#     via `tools/sdlc`. Never hand-edit them.
+#   * Handoff entries are appended by hand, as plain YAML, by the skill that
+#     did the work. Run `tools/sdlc validate <slug>` after appending.
+#
+# stage:  intake → tech-design → dev-plan → implement → validate → final-pr
+#         → retro → done
+# gate:   in-progress → awaiting-approval → approved   (or blocked)
+# slices: "NN": {state: planned | in-progress | awaiting-user-test |
+#         changes-requested | user-approved | pr-raised | merged, pr: <url>}
+#
+# `revision` is bumped by every tools/sdlc write, so a stale copy is
+# detectable. `approvals` is written only by `tools/sdlc approve`, which the
+# user runs.
+
+feature: <feature-slug>
+title: <human-readable title>
+prd: <path or URL to the PRD>
+figma: []
+repos: []
+
+stage: intake
+gate: in-progress
+revision: 1
+
+branches: {}
+slices: {}
+approvals: []
+
+handoffs: []
+# Append one entry per stage that did work. Shape:
+#
+#   - stage: tech-design
+#     actor: tech-design skill
+#     date: <YYYY-MM-DD>
+#     inputs: [01-gap-analysis.md, "PRD §3-5"]
+#     outputs: [02-tech-design.md]
+#     decisions: ["async job queue over a sync API — see ADR-0002"]
+#     open_questions: ["rate limit for third-party polling?"]
+#     next: dev-plan

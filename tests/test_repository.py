@@ -1,5 +1,9 @@
 import json
 import re
+import shutil
+import subprocess
+import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -43,7 +47,43 @@ FULL_SKILLS_ARRAY = [
     "./skills/sdlc/seed-data",
 ]
 
+SHARED = ROOT / "skills" / "sdlc" / "_shared"
+
+TEMPLATES = [
+    "manifest.yaml",
+    "gap-analysis.md",
+    "tech-design.md",
+    "dev-plan.md",
+    "slice-log.md",
+    "validation.md",
+    "retro.md",
+    "team-handoff.md",
+    "technical-doc.md",
+]
+
+SHARED_DOCS = [
+    "handoff-format.md",
+    "branch-commit-conventions.md",
+    "repo-map.template.md",
+    "workspace-setup.md",
+]
+
+# Skills that call tools/sdlc or read docs/templates cannot work in a project
+# that hasn't been bootstrapped, so each must point the reader at the setup
+# doc — directly, or via handoff-format.md which carries it in §0.
+BOOTSTRAP_POINTERS = ("workspace-setup", "handoff-format")
+
 FORBIDDEN_TERMS = ("Sensor", "PHI", "HIPAA")
+
+# Vocabulary from the regulated project this kit was ported out of. The kit
+# is stack- and domain-agnostic: data-handling rules come from the project's
+# own repo-map, not from a compliance checklist baked into the skills.
+FORBIDDEN_PHRASES = (
+    "compliance",
+    "project's own compliance",
+    "Mock/README.md",
+    "factory_boy",
+)
 
 
 class HazeshipRepositoryTests(unittest.TestCase):
@@ -69,7 +109,7 @@ class HazeshipRepositoryTests(unittest.TestCase):
             (ROOT / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8")
         )
         self.assertEqual(manifest["name"], "hazeship")
-        self.assertEqual(manifest["version"], "0.2.0")
+        self.assertEqual(manifest["version"], "0.3.0")
         self.assertEqual(manifest["skills"], "./skills/")
 
     def test_codex_marketplace(self):
@@ -84,7 +124,7 @@ class HazeshipRepositoryTests(unittest.TestCase):
         self.assertEqual(plugin["source"]["source"], "url")
         self.assertEqual(
             plugin["source"]["url"],
-            "https://github.com/abhiyanhaze/hazeship.git",
+            "https://github.com/abhiyan52/hazeship.git",
         )
 
     def test_claude_plugin(self):
@@ -97,7 +137,7 @@ class HazeshipRepositoryTests(unittest.TestCase):
             )
         )
         self.assertEqual(manifest["name"], "hazeship")
-        self.assertEqual(manifest["version"], "0.2.0")
+        self.assertEqual(manifest["version"], "0.3.0")
         self.assertEqual(manifest["skills"], FULL_SKILLS_ARRAY)
         self.assertEqual(marketplace["plugins"][0]["source"], "./")
 
@@ -161,12 +201,208 @@ class HazeshipRepositoryTests(unittest.TestCase):
             f"forbidden terms found: {offenders}",
         )
 
+    def test_sdlc_skills_have_no_forbidden_phrases(self):
+        sdlc_dir = ROOT / "skills" / "sdlc"
+        files = list(sdlc_dir.rglob("*.md")) + list(sdlc_dir.rglob("*.yaml"))
+        offenders = []
+        for path in files:
+            content = path.read_text(encoding="utf-8").lower()
+            for phrase in FORBIDDEN_PHRASES:
+                if phrase.lower() in content:
+                    offenders.append((str(path.relative_to(ROOT)), phrase))
+        self.assertEqual(
+            offenders,
+            [],
+            f"project-specific phrasing found: {offenders}",
+        )
+
+    def test_shared_docs_exist(self):
+        for name in SHARED_DOCS:
+            with self.subTest(doc=name):
+                self.assertTrue(
+                    (SHARED / name).is_file(), f"{SHARED / name} does not exist"
+                )
+
+    def test_templates_ship(self):
+        for name in TEMPLATES:
+            path = SHARED / "templates" / name
+            with self.subTest(template=name):
+                self.assertTrue(path.is_file(), f"{path} does not exist")
+                self.assertTrue(
+                    path.read_text(encoding="utf-8").strip(),
+                    f"{path} is empty",
+                )
+
+    def test_manifest_template_is_valid_yaml_in_the_starting_state(self):
+        try:
+            import yaml
+        except ModuleNotFoundError:
+            self.skipTest("PyYAML not installed")
+        data = yaml.safe_load(
+            (SHARED / "templates" / "manifest.yaml").read_text(encoding="utf-8")
+        )
+        # tools/sdlc refuses to touch a manifest it can't validate, so the
+        # template has to start in a state the state machine accepts.
+        self.assertEqual(data["stage"], "intake")
+        self.assertEqual(data["gate"], "in-progress")
+        self.assertEqual(data["revision"], 1)
+        for key in ("feature", "title", "slices", "approvals", "handoffs"):
+            self.assertIn(key, data)
+
+    def test_shipped_tools_are_executable(self):
+        for name in ("sdlc", "build-docx.sh"):
+            path = SHARED / "tools" / name
+            with self.subTest(tool=name):
+                self.assertTrue(path.is_file(), f"{path} does not exist")
+                self.assertTrue(
+                    path.stat().st_mode & 0o111, f"{path} is not executable"
+                )
+
+    def test_sdlc_cli_runs_and_exposes_its_commands(self):
+        result = subprocess.run(
+            [sys.executable, str(SHARED / "tools" / "sdlc"), "--help"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for command in ("show", "validate", "transition", "gate", "approve", "slice"):
+            with self.subTest(command=command):
+                self.assertIn(command, result.stdout)
+
+    def test_sdlc_cli_drives_a_feature_through_the_whole_loop(self):
+        """The shipped CLI and the shipped manifest template, end to end.
+
+        Covers the gates that make the loop trustworthy: a stage cannot
+        advance without a recorded approval, `approved` cannot be set by
+        hand, and validation cannot start with an unmerged slice.
+        """
+        try:
+            import yaml
+        except ModuleNotFoundError:
+            self.skipTest("PyYAML not installed")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            feature = root / "docs" / "features" / "demo"
+            feature.mkdir(parents=True)
+            (root / "tools").mkdir()
+            shutil.copy(SHARED / "tools" / "sdlc", root / "tools" / "sdlc")
+
+            template = (SHARED / "templates" / "manifest.yaml").read_text(
+                encoding="utf-8"
+            )
+            (feature / "manifest.yaml").write_text(
+                template.replace("<feature-slug>", "demo").replace(
+                    "<human-readable title>", "Demo feature"
+                ),
+                encoding="utf-8",
+            )
+            for name in (
+                "01-gap-analysis.md",
+                "02-tech-design.md",
+                "03-dev-plan.md",
+                "04-validation.md",
+                "05-retro.md",
+            ):
+                (feature / name).write_text("placeholder\n", encoding="utf-8")
+
+            for args in (
+                ["init", "-q"],
+                ["config", "user.email", "dev@example.com"],
+                ["config", "user.name", "Dev"],
+                ["add", "-A"],
+                ["commit", "-qm", "init"],
+            ):
+                subprocess.run(["git", *args], cwd=root, check=True)
+
+            def sdlc(*args):
+                return subprocess.run(
+                    [sys.executable, "tools/sdlc", *args],
+                    cwd=root,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+
+            def ok(*args):
+                result = sdlc(*args)
+                self.assertEqual(result.returncode, 0, f"{args}: {result.stderr}")
+
+            def refused(*args):
+                result = sdlc(*args)
+                self.assertNotEqual(result.returncode, 0, f"{args} should have failed")
+
+            ok("validate", "demo")
+            # No approval recorded yet, so the stage cannot advance.
+            refused("transition", "demo", "tech-design")
+            refused("gate", "demo", "approved")
+
+            def approve_stage(*extra):
+                ok("gate", "demo", "awaiting-approval")
+                ok("approve", "demo", *extra)
+
+            approve_stage()
+            ok("transition", "demo", "tech-design")
+            approve_stage()
+            ok("transition", "demo", "dev-plan")
+            approve_stage()
+            ok("transition", "demo", "implement")
+
+            ok("slice", "demo", "01", "in-progress")
+            # Slice 01 is still open, so 02 cannot start.
+            refused("slice", "demo", "02", "in-progress")
+            # An unmerged slice blocks validation.
+            refused("transition", "demo", "validate")
+            ok("slice", "demo", "01", "awaiting-user-test")
+            ok("slice", "demo", "01", "user-approved")
+            refused("slice", "demo", "01", "pr-raised")  # needs --pr
+            ok("slice", "demo", "01", "pr-raised", "--pr", "https://example.com/pr/1")
+            ok("slice", "demo", "01", "merged")
+
+            ok("transition", "demo", "validate")
+            approve_stage()
+            ok("transition", "demo", "final-pr")
+            approve_stage("--artifact", "04-validation.md")
+            ok("transition", "demo", "retro")
+            approve_stage()
+            ok("transition", "demo", "done")
+            refused("transition", "demo", "done")  # terminal
+            ok("validate", "demo")
+
+            final = yaml.safe_load(
+                (feature / "manifest.yaml").read_text(encoding="utf-8")
+            )
+            self.assertEqual(final["stage"], "done")
+            self.assertEqual(final["slices"]["01"]["state"], "merged")
+            # Approvals are an append-only chronological record.
+            self.assertEqual(
+                [entry["stage"] for entry in final["approvals"]],
+                ["intake", "tech-design", "dev-plan", "validate", "final-pr", "retro"],
+            )
+            for entry in final["approvals"]:
+                self.assertEqual(entry["actor"], "dev@example.com")
+                self.assertNotEqual(entry["commit"], "unknown")
+
+    def test_skills_needing_bootstrap_point_at_it(self):
+        sdlc_dir = ROOT / "skills" / "sdlc"
+        for name in SDLC_SKILLS:
+            content = (sdlc_dir / name / "SKILL.md").read_text(encoding="utf-8")
+            if "tools/sdlc" not in content and "docs/templates" not in content:
+                continue
+            with self.subTest(skill=name):
+                self.assertTrue(
+                    any(pointer in content for pointer in BOOTSTRAP_POINTERS),
+                    f"{name} uses tools/sdlc or docs/templates but never "
+                    f"points the reader at the workspace bootstrap",
+                )
+
     def test_readme_documents_all_installers(self):
         content = (ROOT / "README.md").read_text(encoding="utf-8")
-        self.assertIn("npx skills@latest add abhiyanhaze/hazeship", content)
-        self.assertIn("claude plugin marketplace add abhiyanhaze/hazeship", content)
-        self.assertIn("claude plugin install hazeship@abhiyanhaze", content)
-        self.assertIn("codex plugin marketplace add abhiyanhaze/hazeship", content)
+        self.assertIn("npx skills@latest add abhiyan52/hazeship", content)
+        self.assertIn("claude plugin marketplace add abhiyan52/hazeship", content)
+        self.assertIn("claude plugin install hazeship@abhiyan52", content)
+        self.assertIn("codex plugin marketplace add abhiyan52/hazeship", content)
         self.assertIn("codex plugin add hazeship@hazeship", content)
 
 

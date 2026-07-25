@@ -1,16 +1,16 @@
 {
-  "name": "abhiyanhaze",
+  "name": "abhiyan52",
   "owner": {
-    "name": "abhiyanhaze"
+    "name": "abhiyan52"
   },
-  "description": "Reusable skills from abhiyanhaze.",
+  "description": "Reusable skills from abhiyan52.",
   "plugins": [
     {
       "name": "hazeship",
       "source": "./",
-      "description": "Cross-agent skills including a Nepali greeting.",
-      "category": "productivity",
-      "keywords": ["skills", "nepali", "greeting"]
+      "description": "A cross-agent SDLC skill kit: feature intake, tech design, dev planning, slice implementation, review, QA and retro.",
+      "category": "development",
+      "keywords": ["skills", "sdlc", "development", "code-review", "qa"]
     }
   ]
 }

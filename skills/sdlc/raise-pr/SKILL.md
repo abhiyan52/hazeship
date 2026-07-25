@@ -12,8 +12,9 @@ description: |
 
 Read `_shared/branch-commit-conventions.md` (PR body format, targets,
 risk-based PR policy) and the project's `_shared/repo-map.md` (staging
-branch per repo; copy it from `_shared/repo-map.template.md` if it doesn't
-exist yet). One PR per repo per invocation-target; cross-repo slices
+branch per repo). If the project has no `tools/sdlc` or `_shared/repo-map.md`
+yet, bootstrap them first per `_shared/workspace-setup.md`.
+One PR per repo per invocation-target; cross-repo slices
 get one PR in each affected repo, opened in the merge order from the dev
 plan's compatibility matrix.
 
@@ -38,9 +39,9 @@ plan's compatibility matrix.
    up to date.
 2. Build the body from the slice log (slice PR) or validation report (final
    PR) using the commit/PR template in `_shared/branch-commit-conventions.md`:
-   What / Why / How to test / Compliance checklist. Link
-   `docs/features/<slug>/` and the manifest commit in the meta repo. Check
-   the compliance boxes only if actually verified — otherwise leave
+   What / Why / How to test / Risk & data handling. Link
+   `docs/features/<slug>/` and the manifest commit in the meta repo. Tick a
+   checklist box only if you actually verified it — otherwise leave it
    unchecked and say why.
 3. `gh pr create --base <base> --head <head> --title "..." --body-file <tmp>`
    (write the body to the scratchpad, not the repo), following the title and

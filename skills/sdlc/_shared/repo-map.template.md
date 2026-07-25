@@ -78,3 +78,45 @@ applicable.
   read, copy, or commit it.
 - State your project's rule for what test data QA runs may use (e.g.
   synthetic data only) and where that rule is documented in full.
+
+## Data handling rules
+
+This is the section every skill means when it says "the project's
+data-handling rules": `feature-intake` scans against it, `tech-design` §5
+answers it, `implement-slice` and `review` check diffs against it,
+`validate-feature` verifies it over the whole feature diff, and `seed-data`
+and `qa-playwright` obey it for test data.
+
+The defaults below hold for any project. Edit them, and add whatever your
+project actually requires — a regulated domain, a customer contract, or an
+internal policy will have more. If your project has a fuller policy document,
+link it here and keep this section as the short operational form.
+
+**Data classes** — what counts as sensitive here:
+
+| Class | Examples in this project | Sensitivity |
+|---|---|---|
+| Credentials & secrets | API keys, tokens, session state | always high |
+| `<class>` | `<fields/entities>` | low / medium / high |
+
+**Rules that apply to every change:**
+
+- Secrets never enter the repo: no `.env*`, keys, tokens, credential files or
+  dumps in a commit, a fixture, a test, or a document.
+- Nothing sensitive goes into logs, error messages, analytics events, or URL
+  query strings. Identifiers in a URL are visible in history, proxies, and
+  referrer headers.
+- Test, demo and seed data is synthetic. Real user or customer records are
+  never copied, sampled, or "anonymised" into a non-production environment.
+- Every new endpoint has authentication **and** object-level authorization —
+  "the UI doesn't link to it" is not access control.
+- Screenshots and evidence attached to docs or PRs show synthetic data only.
+- Anything leaving the project (a shared document, a third-party API, a
+  support ticket) carries no real data and no internal paths.
+
+**Project-specific rules:**
+
+- `<rule — e.g. a retention window, a field that must be encrypted at rest,
+  a region data may not leave, an approval required before an export>`
+
+**Where the full policy lives:** `<link, or "this section is it">`

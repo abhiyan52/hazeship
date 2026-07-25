@@ -5,6 +5,14 @@ structure, so anyone (human or agent) can reconstruct who did what, with which
 inputs, and what remains open. This is the artifact trail that makes the loop
 inspectable.
 
+## 0. First run in a project
+
+The files this document describes — `tools/sdlc`, `docs/templates/`,
+`_shared/repo-map.md` — are shipped with this kit but have to be copied into
+the project once. If `tools/sdlc` isn't there yet, follow
+`_shared/workspace-setup.md` before doing anything else; it is idempotent and
+never overwrites what the project already has.
+
 ## 1. The feature manifest (`docs/features/<slug>/manifest.yaml`)
 
 The manifest is the single source of truth for a feature's state. Two write
@@ -100,7 +108,7 @@ CONTEXT
 - Feature: <slug> — read docs/features/<slug>/manifest.yaml first
 - Your scope: <one repo / one lens / one slice — be exact>
 - Inputs: <files/sections the agent must read>
-- Constraints: <compliance checklist, conventions, do-not-touch list>
+- Constraints: <data handling rules, conventions, do-not-touch list>
 
 TASK
 <the concrete task>

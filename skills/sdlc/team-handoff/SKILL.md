@@ -38,7 +38,7 @@ Use the template at `docs/templates/team-handoff.md`.
    links, tech design, code, test evidence) so the question is grounded in
    evidence, not vibes. If you can answer it yourself from the artifacts,
    say so instead of creating a handoff.
-2. Determine: audience (PM / Design / Eng / QA / Compliance), what SDLC
+2. Determine: audience (PM / Design / Eng / QA), what SDLC
    stage it blocks (or "non-blocking"), and options if the answer is a
    choice — a question with concrete options gets answered 10x faster.
 3. Write the doc from the template. The two load-bearing rules:
@@ -90,7 +90,7 @@ audience, blocking, age. Nag gently about stale blockers (>3 days old).
   (they close at different times).
 - These docs are committed to the meta repo: no sensitive data, no
   credentials, no real production examples — synthetic illustrations only,
-  per the project's own compliance/data-handling rules.
+  per the data handling rules in `_shared/repo-map.md`.
 - A blocking handoff does not stop the pipeline mechanically, but the
   blocked stage's skill should surface it (it's in `open_questions`) and
   the user decides whether to proceed at risk.

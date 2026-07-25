@@ -1,0 +1,804 @@
+#!/usr/bin/env python3
+"""sdlc — the feature state machine for the hazeship SDLC skill kit.
+
+A feature's single source of truth is `docs/features/<slug>/manifest.yaml`.
+There are two write paths into that file, and they are strictly separated:
+
+  * State fields (`stage`, `gate`, `slices`, `approvals`, `revision`) are
+    changed ONLY through this tool, which rejects illegal transitions,
+    missing approvals and undefined states.
+  * Handoff entries (`handoffs:`) are appended by hand, as plain YAML, by
+    whichever skill did the work.
+
+So that hand-written YAML survives, every write here is a targeted line
+edit rather than a YAML round-trip: comments, key order and formatting are
+preserved exactly.
+
+Run `tools/sdlc --help` for the command surface.
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+import subprocess
+import sys
+from datetime import datetime
+from pathlib import Path
+
+PROG = "tools/sdlc"
+
+STAGES = [
+    "intake",
+    "tech-design",
+    "dev-plan",
+    "implement",
+    "validate",
+    "final-pr",
+    "retro",
+    "done",
+]
+
+GATES = ["in-progress", "awaiting-approval", "approved", "blocked"]
+
+# Gates a user may set directly. `approved` is reachable only via `approve`,
+# which is what makes an approval auditable.
+SETTABLE_GATES = ["in-progress", "awaiting-approval", "blocked"]
+
+SLICE_STATES = [
+    "planned",
+    "in-progress",
+    "awaiting-user-test",
+    "changes-requested",
+    "user-approved",
+    "pr-raised",
+    "merged",
+]
+
+# `None` is the state of a slice that does not exist in the manifest yet.
+SLICE_TRANSITIONS = {
+    None: {"planned", "in-progress"},
+    "planned": {"in-progress"},
+    "in-progress": {"awaiting-user-test"},
+    "awaiting-user-test": {"user-approved", "changes-requested"},
+    "changes-requested": {"in-progress"},
+    # `user-approved -> merged` is the waived-PR path (see the risk-based PR
+    # policy in _shared/branch-commit-conventions.md).
+    "user-approved": {"pr-raised", "merged"},
+    "pr-raised": {"merged", "changes-requested"},
+    "merged": set(),
+}
+
+# A slice may only be opened once every lower-numbered slice has landed.
+SLICE_SETTLED = {"merged", "user-approved"}
+
+# The artifact `approve` records when --artifact is not given.
+STAGE_ARTIFACTS = {
+    "intake": "01-gap-analysis.md",
+    "tech-design": "02-tech-design.md",
+    "dev-plan": "03-dev-plan.md",
+    "validate": "04-validation.md",
+    "retro": "05-retro.md",
+}
+
+REQUIRED_FIELDS = ["feature", "title", "stage", "gate", "revision"]
+
+
+def die(msg: str) -> None:
+    print(f"{PROG}: error: {msg}", file=sys.stderr)
+    raise SystemExit(1)
+
+
+def load_yaml_module():
+    try:
+        import yaml  # noqa: PLC0415 — optional dependency, probed at use time
+    except ModuleNotFoundError:
+        die(
+            "PyYAML is required to read manifests. Install it with:\n"
+            "    python3 -m pip install pyyaml"
+        )
+    return yaml
+
+
+# ---------------------------------------------------------------------------
+# Locating the workspace
+# ---------------------------------------------------------------------------
+
+
+def find_root(explicit: str | None) -> Path:
+    if explicit:
+        root = Path(explicit).expanduser().resolve()
+        if not (root / "docs" / "features").is_dir():
+            die(f"{root} has no docs/features/ directory")
+        return root
+    here = Path.cwd().resolve()
+    for candidate in [here, *here.parents]:
+        if (candidate / "docs" / "features").is_dir():
+            return candidate
+    die(
+        "no docs/features/ directory here or in any parent directory.\n"
+        "Run this from your project's workspace root, or pass --root <path>."
+    )
+
+
+# ---------------------------------------------------------------------------
+# YAML text editing (targeted, formatting-preserving)
+# ---------------------------------------------------------------------------
+
+TOP_LEVEL_KEY = re.compile(r"^([A-Za-z_][\w-]*):(.*)$")
+
+# An inline value that stands in for "no entries yet" and must be dropped
+# before children can be indented underneath the key. Note that an *empty*
+# inline value means a normal multi-line block, which is a different case —
+# conflating the two duplicates keys instead of replacing them.
+EMPTY_INLINE = {"{}", "[]", "null", "~"}
+
+
+def block_bounds(lines: list[str], key: str) -> tuple[int, int] | None:
+    """Line span [start, end) of a top-level key and its indented children."""
+    start = None
+    for i, line in enumerate(lines):
+        match = TOP_LEVEL_KEY.match(line)
+        if match and match.group(1) == key:
+            start = i
+            break
+    if start is None:
+        return None
+    end = len(lines)
+    for j in range(start + 1, len(lines)):
+        if not lines[j].strip():
+            continue
+        if not lines[j][:1].isspace():
+            end = j
+            break
+    # Don't let trailing blank lines drift into the block; appends go before
+    # them, not after.
+    while end > start + 1 and not lines[end - 1].strip():
+        end -= 1
+    return start, end
+
+
+def split_inline(line: str) -> tuple[str, str]:
+    """Split a `key: value  # note` line into its value and its comment.
+
+    Quotes are deliberately not tracked: this only has to recognise the
+    empty markers ({}, [], null, ~) and carry a trailing comment across a
+    rewrite. A '#' inside a quoted value yields a value that matches no
+    marker, which lands on the general path anyway.
+    """
+    after = line.split(":", 1)[1]
+    hash_pos = after.find("#")
+    if hash_pos == -1:
+        return after.strip(), ""
+    return after[:hash_pos].strip(), after[hash_pos:].rstrip()
+
+
+def key_line(key: str, comment: str, value: str | None = None) -> str:
+    """Rebuild a key's line, keeping any comment that was on it."""
+    rendered = f"{key}: {value}" if value is not None else f"{key}:"
+    return f"{rendered}  {comment}" if comment else rendered
+
+
+def scalar(value) -> str:
+    """Render a Python value as a safe single-line YAML scalar."""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, int):
+        return str(value)
+    text = str(value)
+    needs_quotes = (
+        not text
+        or text != text.strip()
+        or text.lower() in {"true", "false", "null", "yes", "no", "on", "off", "~"}
+        or re.search(r"""[:#\[\]{},&*!|>%@`"']""", text) is not None
+        or text[0] in "-?"
+    )
+    if needs_quotes:
+        escaped = text.replace("\\", "\\\\").replace('"', '\\"')
+        return f'"{escaped}"'
+    return text
+
+
+def join(lines: list[str]) -> str:
+    return "\n".join(lines) + "\n"
+
+
+def set_scalar(text: str, key: str, value) -> str:
+    """Rewrite a scalar field in place, touching only its own line.
+
+    A scalar's value lives on the key's line, so the rest of the block is
+    left alone — that keeps indented explanatory comments underneath a state
+    field from being swallowed by the rewrite.
+    """
+    lines = text.splitlines()
+    bounds = block_bounds(lines, key)
+    if bounds is None:
+        lines.append(f"{key}: {scalar(value)}")
+        return join(lines)
+    start, _ = bounds
+    _, comment = split_inline(lines[start])
+    lines[start] = key_line(key, comment, scalar(value))
+    return join(lines)
+
+
+def render_slice(nn: str, state: str, pr: str | None) -> str:
+    body = f"state: {state}"
+    if pr:
+        body += f", pr: {scalar(pr)}"
+    return f'  "{nn}": {{{body}}}'
+
+
+def set_slice(text: str, nn: str, state: str, pr: str | None) -> str:
+    lines = text.splitlines()
+    rendered = render_slice(nn, state, pr)
+    bounds = block_bounds(lines, "slices")
+
+    if bounds is None:
+        lines.extend(["slices:", rendered])
+        return join(lines)
+
+    start, end = bounds
+    inline, comment = split_inline(lines[start])
+    if inline in EMPTY_INLINE or end == start + 1:
+        lines[start] = key_line("slices", comment)
+        lines.insert(start + 1, rendered)
+        return join(lines)
+
+    key_pattern = re.compile(r'^\s*"?' + re.escape(nn) + r'"?\s*:')
+    for i in range(start + 1, end):
+        if key_pattern.match(lines[i]):
+            lines[i] = rendered
+            return join(lines)
+
+    insert_at = end
+    for i in range(start + 1, end):
+        match = re.match(r'^\s*"?(\d+)"?\s*:', lines[i])
+        if match and match.group(1) > nn:
+            insert_at = i
+            break
+    lines.insert(insert_at, rendered)
+    return join(lines)
+
+
+def append_list_item(text: str, key: str, item: list[str]) -> str:
+    """Append a block-sequence item under a top-level key."""
+    lines = text.splitlines()
+    body = [f"  - {item[0]}"] + [f"    {line}" for line in item[1:]]
+    bounds = block_bounds(lines, key)
+
+    if bounds is None:
+        lines.append(f"{key}:")
+        lines.extend(body)
+        return join(lines)
+
+    start, end = bounds
+    inline, comment = split_inline(lines[start])
+    if inline in EMPTY_INLINE:
+        lines[start] = key_line(key, comment)
+        lines[start + 1 : start + 1] = body
+        return join(lines)
+
+    # Appending at `end` rather than after the key keeps list items in the
+    # order they happened — approvals are a chronological record.
+    lines[end:end] = body
+    return join(lines)
+
+
+# ---------------------------------------------------------------------------
+# The manifest
+# ---------------------------------------------------------------------------
+
+
+class Manifest:
+    def __init__(self, root: Path, slug: str):
+        self.root = root
+        self.slug = slug
+        self.dir = root / "docs" / "features" / slug
+        self.path = self.dir / "manifest.yaml"
+        if not self.path.is_file():
+            die(
+                f"no manifest at {self.path}\n"
+                f"Scaffold the feature first (feature-intake copies it from "
+                f"docs/templates/manifest.yaml)."
+            )
+        self.text = self.path.read_text(encoding="utf-8")
+        yaml = load_yaml_module()
+        try:
+            data = yaml.safe_load(self.text)
+        except Exception as exc:  # yaml.YAMLError and friends
+            die(f"{self.rel} is not valid YAML:\n{exc}")
+        if data is None:
+            data = {}
+        if not isinstance(data, dict):
+            die(f"{self.rel} must be a YAML mapping at the top level")
+        self.data = data
+
+    @property
+    def rel(self) -> str:
+        return str(self.path.relative_to(self.root))
+
+    @property
+    def stage(self) -> str | None:
+        return self.data.get("stage")
+
+    @property
+    def gate(self) -> str | None:
+        return self.data.get("gate")
+
+    @property
+    def revision(self) -> int:
+        value = self.data.get("revision")
+        return value if isinstance(value, int) else 0
+
+    @property
+    def slices(self) -> dict:
+        value = self.data.get("slices")
+        if not isinstance(value, dict):
+            return {}
+        # YAML parses an unquoted 01 as the integer 1; normalise back to the
+        # zero-padded string form the manifest is written in.
+        return {str(k).zfill(2): v for k, v in value.items()}
+
+    def slice_state(self, nn: str) -> str | None:
+        entry = self.slices.get(nn)
+        if isinstance(entry, dict):
+            return entry.get("state")
+        if isinstance(entry, str):
+            return entry
+        return None
+
+    def slice_pr(self, nn: str) -> str | None:
+        entry = self.slices.get(nn)
+        return entry.get("pr") if isinstance(entry, dict) else None
+
+    def save(self, text: str) -> None:
+        self.path.write_text(text, encoding="utf-8")
+
+
+def bump(text: str, revision: int) -> str:
+    return set_scalar(text, "revision", revision + 1)
+
+
+def git(root: Path, *args: str) -> str | None:
+    try:
+        result = subprocess.run(
+            ["git", *args],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except FileNotFoundError:
+        return None
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip() or None
+
+
+# ---------------------------------------------------------------------------
+# Commands
+# ---------------------------------------------------------------------------
+
+
+def cmd_show(manifest: Manifest, _args) -> int:
+    data = manifest.data
+    print(f"feature:  {data.get('feature', manifest.slug)}")
+    print(f"title:    {data.get('title', '<unset>')}")
+    print(f"stage:    {manifest.stage}")
+    print(f"gate:     {manifest.gate}")
+    print(f"revision: {manifest.revision}")
+
+    if data.get("prd"):
+        print(f"prd:      {data['prd']}")
+    repos = data.get("repos")
+    if isinstance(repos, list) and repos:
+        print(f"repos:    {', '.join(str(r) for r in repos)}")
+
+    branches = data.get("branches")
+    if isinstance(branches, dict) and branches:
+        print("\nbranches:")
+        for repo, branch in branches.items():
+            print(f"  {repo}: {branch}")
+
+    slices = manifest.slices
+    if slices:
+        print("\nslices:")
+        for nn in sorted(slices):
+            state = manifest.slice_state(nn) or "<unset>"
+            pr = manifest.slice_pr(nn)
+            print(f"  {nn}: {state}" + (f"  ({pr})" if pr else ""))
+
+    approvals = data.get("approvals")
+    if isinstance(approvals, list) and approvals:
+        print("\napprovals:")
+        for entry in approvals:
+            if not isinstance(entry, dict):
+                continue
+            print(
+                f"  {entry.get('stage', '?')}: {entry.get('actor', '?')}"
+                f" on {entry.get('date', '?')}"
+                f" ({entry.get('artifact', 'no artifact')}"
+                f" @ {str(entry.get('commit', 'unknown'))[:12]})"
+            )
+
+    handoffs = data.get("handoffs")
+    if isinstance(handoffs, list) and handoffs:
+        latest = handoffs[-1]
+        if isinstance(latest, dict):
+            print(
+                f"\nlatest handoff: {latest.get('stage', '?')}"
+                f" by {latest.get('actor', '?')} → next: {latest.get('next', '?')}"
+            )
+            questions = latest.get("open_questions")
+            if isinstance(questions, list) and questions:
+                print("open questions:")
+                for question in questions:
+                    print(f"  - {question}")
+    return 0
+
+
+def validate(manifest: Manifest) -> list[str]:
+    data = manifest.data
+    problems: list[str] = []
+
+    for field in REQUIRED_FIELDS:
+        if field not in data:
+            problems.append(f"missing required field `{field}`")
+
+    if data.get("feature") not in (None, manifest.slug):
+        problems.append(
+            f"`feature: {data['feature']}` does not match the folder name "
+            f"`{manifest.slug}`"
+        )
+    if data.get("stage") is not None and data["stage"] not in STAGES:
+        problems.append(
+            f"`stage: {data['stage']}` is not one of: {', '.join(STAGES)}"
+        )
+    if data.get("gate") is not None and data["gate"] not in GATES:
+        problems.append(f"`gate: {data['gate']}` is not one of: {', '.join(GATES)}")
+    if "revision" in data and not isinstance(data["revision"], int):
+        problems.append("`revision` must be an integer")
+
+    for field in ("figma", "repos"):
+        if field in data and not isinstance(data[field], (list, type(None))):
+            problems.append(f"`{field}` must be a list")
+
+    branches = data.get("branches")
+    if branches is not None and not isinstance(branches, dict):
+        problems.append("`branches` must be a mapping of repo → branch")
+
+    raw_slices = data.get("slices")
+    if raw_slices is not None and not isinstance(raw_slices, dict):
+        problems.append("`slices` must be a mapping of slice number → entry")
+    else:
+        for nn, entry in manifest.slices.items():
+            if not re.fullmatch(r"\d{2}", nn):
+                problems.append(f"slice key `{nn}` must be a two-digit string")
+            state = entry.get("state") if isinstance(entry, dict) else entry
+            if state not in SLICE_STATES:
+                problems.append(
+                    f"slice {nn}: state `{state}` is not one of: "
+                    f"{', '.join(SLICE_STATES)}"
+                )
+            if state == "pr-raised" and not (
+                isinstance(entry, dict) and entry.get("pr")
+            ):
+                problems.append(f"slice {nn}: state `pr-raised` requires a `pr` URL")
+
+    approvals = data.get("approvals")
+    if approvals is not None and not isinstance(approvals, list):
+        problems.append("`approvals` must be a list")
+    elif isinstance(approvals, list):
+        for i, entry in enumerate(approvals):
+            if not isinstance(entry, dict):
+                problems.append(f"approvals[{i}] must be a mapping")
+                continue
+            for key in ("stage", "actor", "date"):
+                if not entry.get(key):
+                    problems.append(f"approvals[{i}] missing `{key}`")
+
+    handoffs = data.get("handoffs")
+    if handoffs is not None and not isinstance(handoffs, list):
+        problems.append("`handoffs` must be a list")
+    elif isinstance(handoffs, list):
+        for i, entry in enumerate(handoffs):
+            if not isinstance(entry, dict):
+                problems.append(f"handoffs[{i}] must be a mapping")
+                continue
+            for key in ("stage", "actor", "date"):
+                if not entry.get(key):
+                    problems.append(f"handoffs[{i}] missing `{key}`")
+
+    # Cross-field consistency. `done` is exempt: it inherits the approved
+    # gate from the retro approval that let it happen.
+    if (
+        data.get("gate") == "approved"
+        and data.get("stage") != "done"
+        and isinstance(approvals, list)
+    ):
+        stages_approved = {
+            entry.get("stage") for entry in approvals if isinstance(entry, dict)
+        }
+        if data.get("stage") not in stages_approved:
+            problems.append(
+                f"gate is `approved` but no approval is recorded for stage "
+                f"`{data.get('stage')}` — gate was hand-edited"
+            )
+    if manifest.slices and data.get("stage") in ("intake", "tech-design", "dev-plan"):
+        problems.append(
+            f"slices exist but stage is `{data.get('stage')}` — slices belong "
+            f"to `implement` and later"
+        )
+    return problems
+
+
+def cmd_validate(manifest: Manifest, _args) -> int:
+    problems = validate(manifest)
+    if not problems:
+        print(f"{manifest.rel}: ok")
+        return 0
+    print(f"{manifest.rel}: {len(problems)} problem(s)", file=sys.stderr)
+    for problem in problems:
+        print(f"  - {problem}", file=sys.stderr)
+    return 1
+
+
+def cmd_transition(manifest: Manifest, args) -> int:
+    target = args.stage
+    if target not in STAGES:
+        die(f"`{target}` is not a stage. One of: {', '.join(STAGES)}")
+    current = manifest.stage
+    if current not in STAGES:
+        die(f"current stage `{current}` is not a known stage — fix the manifest")
+    if manifest.gate == "blocked":
+        die(
+            f"gate is `blocked` — resolve the blocker and run "
+            f"`{PROG} gate {manifest.slug} in-progress` first"
+        )
+    if target == current:
+        die(f"already at stage `{current}`")
+
+    expected = STAGES[STAGES.index(current) + 1] if current != "done" else None
+    if target != expected:
+        die(
+            f"cannot go from `{current}` to `{target}`; the only legal next "
+            f"stage is `{expected}`"
+            if expected
+            else f"`{current}` is the final stage"
+        )
+
+    if target == "validate":
+        # Validation is gated on merged work, not on a stage approval: every
+        # slice has already been approved individually by the user.
+        slices = manifest.slices
+        if not slices:
+            die("no slices recorded — nothing to validate")
+        unmerged = [
+            f"{nn} ({manifest.slice_state(nn)})"
+            for nn in sorted(slices)
+            if manifest.slice_state(nn) != "merged"
+        ]
+        if unmerged:
+            die(
+                "every slice must be `merged` before validation. Not merged: "
+                + ", ".join(unmerged)
+            )
+    elif manifest.gate != "approved":
+        die(
+            f"stage `{current}` has gate `{manifest.gate}`, not `approved`.\n"
+            f"The user approves with `{PROG} approve {manifest.slug}`."
+        )
+
+    text = set_scalar(manifest.text, "stage", target)
+    # `done` is terminal, so it keeps the approved gate that let it happen.
+    text = set_scalar(text, "gate", "approved" if target == "done" else "in-progress")
+    text = bump(text, manifest.revision)
+    manifest.save(text)
+    print(f"{manifest.slug}: stage {current} → {target} (gate: "
+          f"{'approved' if target == 'done' else 'in-progress'})")
+    return 0
+
+
+def cmd_gate(manifest: Manifest, args) -> int:
+    target = args.gate
+    if target == "approved":
+        die(
+            f"`approved` cannot be set directly — it is recorded by "
+            f"`{PROG} approve {manifest.slug}`, which the user runs."
+        )
+    if target not in SETTABLE_GATES:
+        die(f"`{target}` is not settable. One of: {', '.join(SETTABLE_GATES)}")
+    if manifest.gate == target:
+        die(f"gate is already `{target}`")
+
+    text = set_scalar(manifest.text, "gate", target)
+    text = bump(text, manifest.revision)
+    manifest.save(text)
+    print(f"{manifest.slug}: gate {manifest.gate} → {target}")
+    return 0
+
+
+def cmd_approve(manifest: Manifest, args) -> int:
+    if manifest.gate != "awaiting-approval":
+        die(
+            f"gate is `{manifest.gate}`; approval is only meaningful at "
+            f"`awaiting-approval`. The skill that finished the stage sets it "
+            f"with `{PROG} gate {manifest.slug} awaiting-approval`."
+        )
+    stage = manifest.stage
+    artifact = args.artifact or STAGE_ARTIFACTS.get(stage)
+    if not artifact:
+        die(f"stage `{stage}` has no default artifact — pass --artifact <path>")
+
+    for candidate in (manifest.dir / artifact, manifest.root / artifact):
+        if candidate.is_file():
+            break
+    else:
+        die(
+            f"artifact `{artifact}` not found (looked in {manifest.dir} and "
+            f"{manifest.root}). Approving a document that isn't there hides a "
+            f"missing deliverable."
+        )
+
+    actor = args.actor or git(manifest.root, "config", "user.email") or "unknown"
+    commit = git(manifest.root, "rev-parse", "HEAD") or "unknown"
+    date = datetime.now().astimezone().isoformat(timespec="seconds")
+
+    text = append_list_item(
+        manifest.text,
+        "approvals",
+        [
+            f"stage: {scalar(stage)}",
+            f"actor: {scalar(actor)}",
+            f"date: {scalar(date)}",
+            f"artifact: {scalar(artifact)}",
+            f"commit: {scalar(commit)}",
+        ],
+    )
+    text = set_scalar(text, "gate", "approved")
+    text = bump(text, manifest.revision)
+    manifest.save(text)
+    print(
+        f"{manifest.slug}: stage `{stage}` approved by {actor}\n"
+        f"  artifact: {artifact}\n"
+        f"  commit:   {commit}"
+    )
+    if commit == "unknown":
+        print(
+            "  note: no git commit recorded — an approval that can't be "
+            "pinned to a commit cannot detect later edits to the artifact.",
+            file=sys.stderr,
+        )
+    return 0
+
+
+def cmd_slice(manifest: Manifest, args) -> int:
+    if manifest.stage != "implement":
+        die(
+            f"slices only change during stage `implement` (currently "
+            f"`{manifest.stage}`)"
+        )
+    if not re.fullmatch(r"\d{1,2}", args.number):
+        die(f"slice number `{args.number}` must be one or two digits")
+    nn = args.number.zfill(2)
+    target = args.state
+    if target not in SLICE_STATES:
+        die(f"`{target}` is not a slice state. One of: {', '.join(SLICE_STATES)}")
+
+    current = manifest.slice_state(nn)
+    allowed = SLICE_TRANSITIONS.get(current, set())
+    if target not in allowed:
+        where = f"slice {nn} is `{current}`" if current else f"slice {nn} does not exist yet"
+        options = ", ".join(sorted(allowed)) if allowed else "nothing (terminal state)"
+        die(f"{where}; from there the legal states are: {options}")
+
+    # Work may only START on a slice once every lower-numbered slice has
+    # landed. Checked on the move into `in-progress` rather than only on
+    # creation, so declaring slices up front doesn't buy a way around it. A
+    # predecessor that isn't in the manifest at all has certainly not landed.
+    if target == "in-progress" and current != "changes-requested":
+        stragglers = []
+        for i in range(1, int(nn)):
+            other = str(i).zfill(2)
+            state = manifest.slice_state(other)
+            if state not in SLICE_SETTLED:
+                stragglers.append(f"{other} ({state or 'not started'})")
+        if stragglers:
+            die(
+                "earlier slices have not landed — never stack untested "
+                "slices. Outstanding: " + ", ".join(stragglers)
+            )
+
+    if target == "pr-raised" and not args.pr:
+        die("`pr-raised` requires --pr <url>")
+
+    pr = args.pr or manifest.slice_pr(nn)
+    text = set_slice(manifest.text, nn, target, pr)
+    text = bump(text, manifest.revision)
+    manifest.save(text)
+    print(f"{manifest.slug}: slice {nn} {current or '(new)'} → {target}")
+    return 0
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog=PROG,
+        description="Feature SDLC state machine (docs/features/<slug>/manifest.yaml).",
+    )
+    parser.add_argument(
+        "--root",
+        help="workspace root containing docs/features/ (default: nearest parent)",
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    show = subparsers.add_parser("show", help="print a feature's state")
+    show.add_argument("slug")
+    show.set_defaults(handler=cmd_show)
+
+    check = subparsers.add_parser("validate", help="check a manifest for problems")
+    check.add_argument("slug")
+    check.set_defaults(handler=cmd_validate)
+
+    transition = subparsers.add_parser(
+        "transition", help="advance to the next stage (requires an approved gate)"
+    )
+    transition.add_argument("slug")
+    transition.add_argument("stage", choices=STAGES)
+    transition.set_defaults(handler=cmd_transition)
+
+    gate = subparsers.add_parser("gate", help="set the gate within the current stage")
+    gate.add_argument("slug")
+    gate.add_argument("gate", choices=SETTABLE_GATES + ["approved"])
+    gate.set_defaults(handler=cmd_gate)
+
+    approve = subparsers.add_parser(
+        "approve", help="record the user's approval of the current stage"
+    )
+    approve.add_argument("slug")
+    approve.add_argument("--artifact", help="artifact approved (default: per stage)")
+    approve.add_argument("--actor", help="who approved (default: git user.email)")
+    approve.set_defaults(handler=cmd_approve)
+
+    slice_cmd = subparsers.add_parser("slice", help="move a slice's state")
+    slice_cmd.add_argument("slug")
+    slice_cmd.add_argument("number", metavar="NN")
+    slice_cmd.add_argument("state", choices=SLICE_STATES)
+    slice_cmd.add_argument("--pr", help="PR URL (required for pr-raised)")
+    slice_cmd.set_defaults(handler=cmd_slice)
+
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    root = find_root(args.root)
+    manifest = Manifest(root, args.slug)
+
+    # Every command except `validate` refuses to touch a manifest that is
+    # already inconsistent — silently building on a broken manifest is how
+    # state gets lost.
+    if args.handler is not cmd_validate:
+        problems = validate(manifest)
+        if problems:
+            print(
+                f"{PROG}: {manifest.rel} is inconsistent; fix it before "
+                f"changing state (`{PROG} validate {args.slug}`):",
+                file=sys.stderr,
+            )
+            for problem in problems:
+                print(f"  - {problem}", file=sys.stderr)
+            return 1
+
+    return args.handler(manifest, args)
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except KeyboardInterrupt:
+        raise SystemExit(130) from None

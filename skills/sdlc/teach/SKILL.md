@@ -84,7 +84,7 @@ Update the mission as the feature progresses; note changes in a learning record.
      follow-ups in chat.
    - **Sensitive-data rule**: lessons use synthetic examples only — never
      real production data, credentials, or environment secrets, even as
-     illustrations. Follow the project's own compliance/data-handling rules.
+     illustrations. Follow the data handling rules in `_shared/repo-map.md`.
    - Open the finished lesson for the user (`open <file>`).
 4. **Compress into reference docs** anything re-readable: a glossary of the
    feature's domain terms, the architecture cheat sheet, "how our SDLC
@@ -105,8 +105,9 @@ Update the mission as the feature progresses; note changes in a learning record.
 - **"What happened while I was away / what did the agents do?"** → manifest
   handoffs + slice logs turned into a narrative lesson with decisions and
   deviations highlighted.
-- **"Why is this a compliance issue?"** → the checklist item + the concrete
-  code path, taught with a synthetic example of the failure.
+- **"Why does this data handling rule matter here?"** → the rule from
+  `_shared/repo-map.md` + the concrete code path it governs, taught with a
+  synthetic example of the failure it prevents.
 - **"How does our SDLC work?"** → cross-cutting course in `docs/learning/`
   from the project's CLAUDE.md + `_shared/handoff-format.md`, with the state
   machine as a diagram.

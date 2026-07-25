@@ -37,9 +37,9 @@ first.
    - Every architecturally significant decision gets an entry in
      "Alternatives considered"; if it constrains future features, also record
      an ADR in `docs/adr/`.
-   - The sensitive-data-flow table (§5) is mandatory — "no sensitive data"
-     must be stated and justified explicitly, per the project's own
-     compliance/data-handling rules.
+   - The data handling table (§5) is mandatory — "no sensitive data" must be
+     stated and justified explicitly, judged against the data handling rules
+     in `_shared/repo-map.md`.
 3. **Diagrams**: write Mermaid sources in `docs/features/<slug>/diagrams/*.mmd`
    (at minimum an architecture flowchart; add a sequence diagram when the
    feature spans repos or async boundaries). Reference them in the doc as

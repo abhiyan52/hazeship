@@ -73,10 +73,13 @@ Body:
 1. <step>
 2. <expected>
 
-## Compliance
-- [ ] No sensitive data in logs/fixtures/screenshots (checked against project data-handling rules)
-- [ ] New endpoints have authn + object-level authz
-- [ ] Synthetic/test data only
+## Risk & data handling
+Checked against the data handling rules in `_shared/repo-map.md`.
+
+- [ ] No secrets or sensitive data in the diff, logs, fixtures or screenshots
+- [ ] New endpoints have authentication + object-level authorization
+- [ ] Test/seed data is synthetic
+- [ ] Migrations are reversible, or the one-way step is called out above
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ```

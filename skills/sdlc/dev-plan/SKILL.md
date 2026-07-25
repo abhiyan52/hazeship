@@ -42,7 +42,7 @@ the tech design wasn't approved).
 2. Write `03-dev-plan.md` from `docs/templates/dev-plan.md`, including per
    slice: tasks with dependency column, test strategy (unit / integration /
    numbered Playwright scenarios with preconditions-steps-expected — these are
-   executed verbatim by qa-playwright later), demo script, compliance notes,
+   executed verbatim by qa-playwright later), demo script, data handling notes,
    and a **PR policy** (slice PR required vs waived — see the risk rules in
    `_shared/branch-commit-conventions.md`; required is the default).
 3. For any slice spanning repos, fill the **cross-repo compatibility matrix**

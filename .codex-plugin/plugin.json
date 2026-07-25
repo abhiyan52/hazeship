@@ -1,24 +1,24 @@
 {
   "name": "hazeship",
-  "version": "0.2.0",
-  "description": "Reusable cross-agent skills from abhiyanhaze.",
+  "version": "0.3.0",
+  "description": "A cross-agent SDLC skill kit for any software project.",
   "author": {
-    "name": "abhiyanhaze",
-    "email": "abhiyan.timilsina@doctustech.com",
-    "url": "https://github.com/abhiyanhaze"
+    "name": "abhiyan52",
+    "email": "abhiyantimilsina@gmail.com",
+    "url": "https://github.com/abhiyan52"
   },
-  "homepage": "https://github.com/abhiyanhaze/hazeship",
-  "repository": "https://github.com/abhiyanhaze/hazeship",
+  "homepage": "https://github.com/abhiyan52/hazeship",
+  "repository": "https://github.com/abhiyan52/hazeship",
   "license": "MIT",
-  "keywords": ["agent-skills", "nepali", "productivity"],
+  "keywords": ["agent-skills", "sdlc", "development", "code-review", "qa"],
   "skills": "./skills/",
   "interface": {
     "displayName": "Hazeship",
-    "shortDescription": "Reusable cross-agent skills",
-    "longDescription": "Install reusable skills maintained by abhiyanhaze.",
-    "developerName": "abhiyanhaze",
-    "category": "Productivity",
+    "shortDescription": "A cross-agent SDLC skill kit",
+    "longDescription": "An end-to-end SDLC skill kit for any software project: feature intake and gap analysis, tech design, dev planning into vertical slices, slice implementation, review, QA, validation, PRs and retros.",
+    "developerName": "abhiyan52",
+    "category": "Development",
     "capabilities": [],
-    "defaultPrompt": "Use $say-hello to greet me in Nepali."
+    "defaultPrompt": "Use $feature-intake to start a new feature from a PRD."
   }
 }

@@ -78,8 +78,8 @@ in writing per item (recorded in the slice log), but you never self-clear.
      where the behavior is precisely specified).
    - Match each repo's existing conventions (see repo-map: lint/typecheck
      commands) and run them before considering a task done.
-   - Compliance is in scope while coding: follow the project's own
-     compliance/data-handling checklist for every diff.
+   - Data handling is in scope while coding, not a later review step: check
+     every diff against the data handling rules in `_shared/repo-map.md`.
 4. **Checkpoint**: after each completed task (or coherent group), invoke the
    `checkpoint` skill to commit in the required format. Keep the work log
    table in the slice log current.

@@ -46,10 +46,12 @@ You produce `docs/features/<slug>/01-gap-analysis.md`. Read
 5. **Cross-examine** the three sources pairwise and record every gap in the
    template's gap table: PRD↔Figma mismatches, PRD ambiguities, design states
    missing, design↔code conflicts, PRD↔code conflicts.
-6. **Compliance scan**: anything that will carry sensitive data (per the
-   project's own compliance/data-handling rules and the repo-map's
-   sensitive-data-exposure notes) gets flagged now so the tech design must
-   address it.
+6. **Data handling scan**: anything the feature will store, log, display,
+   export or send to a third party gets checked against the data handling
+   rules in `_shared/repo-map.md` and the repo-map's sensitive-data-exposure
+   notes, and flagged now so the tech design has to address it. "No sensitive
+   data" is a valid finding — record it explicitly rather than omitting the
+   section.
 7. **Write** `01-gap-analysis.md` from `docs/templates/gap-analysis.md`.
 8. **Handoff**: append the handoff entry to `manifest.yaml`
    (stage: intake, next: tech-design), then run

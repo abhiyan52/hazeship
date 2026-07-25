@@ -11,10 +11,11 @@ description: |
 # To Technical Doc (stakeholder deliverable)
 
 You produce `docs/features/<slug>/technical-doc.md` + `technical-doc.docx`
-from `docs/templates/technical-doc.md`. This is a TRANSLATION of the
-engineering tech design for PRD readers — not a second design. If you find
-yourself making a design decision here, stop: it belongs in
-`02-tech-design.md` first.
+from `docs/templates/technical-doc.md` (if the project has no
+`docs/templates/` or `tools/docx/build-docx.sh` yet, bootstrap them first per
+`_shared/workspace-setup.md`). This is a TRANSLATION of the engineering tech
+design for PRD readers — not a second design. If you find yourself making a
+design decision here, stop: it belongs in `02-tech-design.md` first.
 
 ## Inputs (read all before writing)
 
@@ -30,9 +31,11 @@ yourself making a design decision here, stop: it belongs in
 - **No repo internals**: no file names, paths, module/class names, table or
   field lists. Describe the technical workflow, components and their
   responsibilities, architectural decisions, and state lifecycles at
-  concept level — the sample structure in the template (summary → golden
-  flow → architecture + invariants → states → failure behavior → decisions
-  → sequence → open questions) is the contract.
+  concept level — the section structure in the template (§1 summary → §2
+  golden flow, with the sequence diagram → §3 architecture + invariants →
+  §4 data handling → §5 states → §6 failure behaviour → §7 decisions → §8
+  open questions) is the contract. Keep the numbering: §4 and §8 are
+  referenced by name below.
 - **Diagrams**: reuse/adapt the tech design's Mermaid sources
   (`diagrams/*.mmd`); add a golden-flow diagram and a state diagram if the
   tech design lacks them (a state diagram is expected whenever the central
@@ -45,7 +48,7 @@ yourself making a design decision here, stop: it belongs in
   team-handoff ids like `(team-handoff <slug>#003)`. Drop questions that
   have since been resolved; check the handoff docs' status first.
 - Sensitive data appears only as the one-paragraph protection statement in
-  §4, per the project's own compliance/data-handling rules — no real or
+  §4, per the data handling rules in `_shared/repo-map.md` — no real or
   synthetic examples in a document that leaves the building.
 
 ## Steps

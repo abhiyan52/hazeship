@@ -2,11 +2,12 @@
 
 Reusable skills for Claude Code, Codex, and agents that support the Agent Skills format.
 
+The SDLC kit is an end-to-end feature loop — intake → design → plan →
+implement → validate → PR → retro — with a human approval gate at every
+stage. It is stack-agnostic: what it needs to know about your project (repos,
+commands, data-handling rules) it reads from one file you fill in.
+
 ## Available skills
-
-### Productivity
-
-- `say-hello` — Return a deterministic greeting in Nepali.
 
 ### SDLC
 
@@ -25,35 +26,82 @@ Reusable skills for Claude Code, Codex, and agents that support the Agent Skills
 - `qa-playwright` — Automated browser verification of a slice or feature via the project's Playwright QA runner.
 - `seed-data` — Generate synthetic seed scripts/data for a feature and populate the local dev database.
 
+### Productivity
+
+- `say-hello` — Return a deterministic greeting in Nepali.
+
+## What ships alongside the skills
+
+The SDLC skills read and write real files, so the kit ships the pieces they
+depend on under `skills/sdlc/_shared/`:
+
+- `tools/sdlc` — the feature state machine. Owns every state field in a
+  feature's `manifest.yaml` and refuses illegal transitions, so approvals
+  can't be skipped and untested slices can't stack. Python 3 + PyYAML.
+- `tools/build-docx.sh` — markdown → DOCX for the stakeholder document.
+- `templates/` — the nine document templates the skills write from.
+- `repo-map.template.md` — the one file you fill in per project: repos,
+  commands, ports, QA credentials, and your data-handling rules.
+- `workspace-setup.md` — the one-time, idempotent bootstrap that copies the
+  above into a project.
+- `handoff-format.md`, `branch-commit-conventions.md` — the contracts every
+  skill and subagent communicates through.
+
+## Using the SDLC kit in a project
+
+Once installed, run any SDLC skill from your project's workspace root. On the
+first run it will bootstrap `tools/`, `docs/templates/` and
+`_shared/repo-map.md` per `workspace-setup.md` — then **fill in
+`_shared/repo-map.md`** before going further; every skill reads it instead of
+guessing at your repos.
+
+```bash
+python3 -m pip install pyyaml   # tools/sdlc reads manifests with it
+```
+
+The feature loop, and who moves it:
+
+| Stage | Skill | Gate |
+|---|---|---|
+| intake | `/feature-intake` | user approves the gap analysis |
+| tech-design | `/tech-design` | user approves the design |
+| dev-plan | `/dev-plan` | user approves the slicing |
+| implement | `/implement-slice` | user tests each slice |
+| validate | `/validate-feature` | user approves the verdict |
+| final-pr | `/raise-pr` → `/review` | user merges |
+| retro | `/retro` | user signs off |
+
+`/checkpoint`, `/qa-playwright`, `/seed-data`, `/teach`, `/team-handoff` and
+`/to-technical-doc` are helpers, usable at any point.
+
 ## Generic Agent Skills installation
 
 ```bash
-npx skills@latest add abhiyanhaze/hazeship
+npx skills@latest add abhiyan52/hazeship
 ```
 
 ## Claude Code installation
 
 ```bash
-claude plugin marketplace add abhiyanhaze/hazeship
-claude plugin install hazeship@abhiyanhaze
+claude plugin marketplace add abhiyan52/hazeship
+claude plugin install hazeship@abhiyan52
 ```
 
-Invoke the skill with `/say-hello`.
+Invoke a skill with `/<name>` — e.g. `/feature-intake`, `/review`, `/checkpoint`.
 
 ## Codex installation
 
 ```bash
-codex plugin marketplace add abhiyanhaze/hazeship
+codex plugin marketplace add abhiyan52/hazeship
 codex plugin add hazeship@hazeship
 ```
 
-Invoke the skill with `$say-hello`.
+Invoke a skill with `$<name>` — e.g. `$feature-intake`, `$review`, `$checkpoint`.
 
 ## Local validation
 
 ```bash
 python3 -m unittest discover -s tests -v
-python3 /Users/mac/.codex/skills/.system/skill-creator/scripts/quick_validate.py skills/productivity/say-hello
 ```
 
 ## License

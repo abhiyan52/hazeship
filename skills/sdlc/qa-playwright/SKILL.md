@@ -29,7 +29,8 @@ in `_shared/repo-map.md` so future runs don't need to ask again.
 
 - **You never read the QA credentials file directly.** Not with grep, not
   with Read, not partially, not "just to check a key exists". The runner
-  process loads it itself (e.g. via dotenv); auth happens once in an
+  process loads it itself (via whatever env-file loader it uses); auth
+  happens once in an
   auth-setup step and specs reuse the saved storage state (a gitignored
   directory, per repo-map). You only ever see the reporter output.
 - If the runner fails with a missing-variable error, relay that error
