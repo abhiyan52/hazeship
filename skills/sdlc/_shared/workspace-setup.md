@@ -25,8 +25,10 @@ the directory containing `docs/features/`.
 │   ├── templates/             # the document templates below
 │   └── triage/                # dated triage reports (by /triage)
 ├── seeds/                     # synthetic fixtures (created by seed-data)
+├── worklog/                   # the work ledger (see the work-log skill)
 └── tools/
     ├── sdlc                   # the feature state machine
+    ├── worklog                # the work-ledger CLI (system of record)
     └── docx/build-docx.sh     # markdown → DOCX (optional, /to-technical-doc)
 ```
 
@@ -42,10 +44,11 @@ directory — the same place the file you're reading now lives.
 ```bash
 mkdir -p _shared docs/templates docs/features docs/adr tools/docx
 
-# The state machine and the DOCX builder.
+# The state machine, the work-ledger CLI, and the DOCX builder.
 cp -n <kit>/_shared/tools/sdlc            tools/sdlc
+cp -n <kit>/_shared/tools/worklog         tools/worklog
 cp -n <kit>/_shared/tools/build-docx.sh   tools/docx/build-docx.sh
-chmod +x tools/sdlc tools/docx/build-docx.sh
+chmod +x tools/sdlc tools/worklog tools/docx/build-docx.sh
 
 # The document templates.
 cp -n <kit>/_shared/templates/*           docs/templates/

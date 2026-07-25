@@ -61,3 +61,9 @@ When asked to record a merge (or after the user merges):
   slice branch.
 - Final PR merged (all repos) → the `retro` skill runs
   `tools/sdlc transition <slug> retro`; remind the user.
+
+## Work ledger
+
+If the project keeps a work ledger (`worklog/` — see the `work-log` skill),
+record every PR you create against its work item:
+`tools/worklog --actor "claude (raise-pr)" link <id> --pr <url>`.

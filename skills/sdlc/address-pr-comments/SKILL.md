@@ -18,6 +18,14 @@ against the code and the feature's intent docs before being acted on. Read
 `docs/features/<slug>/` so pushback is grounded in the approved design, not
 taste.
 
+## 0. Work ledger
+
+Run the `work-log` dedup gate for this PR's comment round (find by PR
+number/URL): if a round is already open for the same PR, continue that item
+rather than opening another. Otherwise open one (`--ref` = the PR URL,
+source per how you were asked). Close it (`done`, with the reply table as
+the final note) when the replies are posted.
+
 ## 1. Fetch the unresolved threads
 
 Check out the PR's head branch and pull. Then fetch review threads with

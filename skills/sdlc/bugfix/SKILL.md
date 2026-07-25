@@ -23,6 +23,14 @@ ships**. Read `_shared/handoff-format.md` §0 (first-run bootstrap),
 - If reproduction steps are missing, getting them IS the first task — a
   bug you can't reproduce is a triage, not a bugfix; switch to `triage`.
 
+## Work ledger first
+
+Run the `work-log` dedup gate before touching anything: if the bug is
+already an open item (another actor may have picked it up) or a done item,
+report that instead of redoing it. A `triage` handoff continues its
+existing item — don't open a second one. Otherwise open an item; at step 7,
+`link` the PR and bug report and mark it `done`.
+
 ## The confidence anchor: failing test first
 
 Before writing any fix, capture the bug as an automated test that **fails

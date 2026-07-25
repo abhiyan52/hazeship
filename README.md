@@ -31,6 +31,7 @@ commands, data-handling rules) it reads from one file you fill in.
 - `triage` — Turn a support ticket into an evidence-backed diagnosis (data/config, code bug, not-a-bug, or needs-info) without changing any system.
 - `bugfix` — Lightweight bug loop: failing test first, minimal fix, Playwright on the affected flow, ship via `commit-pr` on a `bug/*` branch.
 - `address-pr-comments` — Fetch unresolved review threads, fix the clear-cut ones behind a per-batch test gate, and reply with commit + test evidence.
+- `work-log` — System of record for all work: dedup gate before starting anything, then status/actor/source (clickup, telegram, direct) and PR + ClickUp links per item, via `tools/worklog`.
 
 ### Productivity
 
@@ -103,6 +104,10 @@ the daily work, reusing the same helpers and gates:
 | Support ticket | `/triage` | `persistent-memory` → `ssh-readonly-investigation` → verdict (may hand off to `/bugfix`) |
 | Bug | `/bugfix` | failing test → minimal fix → `qa-playwright` → user verifies → `commit-pr` |
 | Review feedback | `/address-pr-comments` | fetch threads → classify → fix + test gate per batch → `checkpoint` → reply with evidence |
+
+Every workflow above starts with the `work-log` dedup gate (don't redo work
+already picked up) and records its item — status, actor, source, PR and
+ClickUp links — in the project's `worklog/` ledger via `tools/worklog`.
 
 ## Keeping installed projects up to date
 

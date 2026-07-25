@@ -29,6 +29,13 @@ You produce `docs/features/<slug>/01-gap-analysis.md`. Read
   design-reviewer) uses, never the PRD's embedded links.
 - Feature slug (kebab-case) — propose one from the title if not given
 
+## Work ledger first
+
+Run the `work-log` dedup gate on the feature title/PRD before scaffolding:
+an open or done item for the same feature means the work exists — report it
+instead of re-doing intake. Otherwise open ONE item for the whole feature
+(it will collect the slice PRs as links and closes at retro).
+
 ## Steps
 
 1. **Scaffold**: create `docs/features/<slug>/` with `manifest.yaml` from

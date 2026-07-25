@@ -27,6 +27,15 @@ often already hold the wrapper commands, known quirks, and past verdicts.
 - The client/host label — it must resolve to a repo-map **Remote hosts**
   entry or an explicit SSH target from the user. Never guess a hostname.
 
+## Work ledger first
+
+Run the `work-log` dedup gate before investigating: if this ticket (or its
+symptom) is already an open or done item, report that instead of
+re-triaging. Otherwise open an item (`--source clickup` with the ticket URL
+as `--ref`, or `telegram`/`direct`), and on the verdict: `link` the triage
+report, note the verdict, and either close the item (`done`) or keep the
+SAME item open for the `bugfix` handoff.
+
 ## Steps
 
 1. **Restate the symptom** as one falsifiable sentence ("client X's export

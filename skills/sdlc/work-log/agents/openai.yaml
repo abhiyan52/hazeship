@@ -1,0 +1,6 @@
+interface:
+  display_name: "Work Log"
+  short_description: "System of record for work items: dedup gate, status, actor, source, links"
+  default_prompt: "Use $work-log to check whether this work is already done and record it."
+policy:
+  allow_implicit_invocation: false

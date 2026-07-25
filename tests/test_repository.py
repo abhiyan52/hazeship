@@ -43,6 +43,7 @@ SDLC_SKILLS = [
     "triage",
     "bugfix",
     "address-pr-comments",
+    "work-log",
 ]
 
 FULL_SKILLS_ARRAY = [
@@ -67,6 +68,7 @@ FULL_SKILLS_ARRAY = [
     "./skills/sdlc/triage",
     "./skills/sdlc/bugfix",
     "./skills/sdlc/address-pr-comments",
+    "./skills/sdlc/work-log",
 ]
 
 SHARED = ROOT / "skills" / "sdlc" / "_shared"
@@ -132,7 +134,7 @@ class HazeshipRepositoryTests(unittest.TestCase):
             (ROOT / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8")
         )
         self.assertEqual(manifest["name"], "hazeship")
-        self.assertEqual(manifest["version"], "0.4.0")
+        self.assertEqual(manifest["version"], "0.5.0")
         self.assertEqual(manifest["skills"], "./skills/")
 
     def test_codex_marketplace(self):
@@ -160,7 +162,7 @@ class HazeshipRepositoryTests(unittest.TestCase):
             )
         )
         self.assertEqual(manifest["name"], "hazeship")
-        self.assertEqual(manifest["version"], "0.4.0")
+        self.assertEqual(manifest["version"], "0.5.0")
         self.assertEqual(manifest["skills"], FULL_SKILLS_ARRAY)
         self.assertEqual(marketplace["plugins"][0]["source"], "./")
 
@@ -273,7 +275,7 @@ class HazeshipRepositoryTests(unittest.TestCase):
             self.assertIn(key, data)
 
     def test_shipped_tools_are_executable(self):
-        for name in ("sdlc", "build-docx.sh"):
+        for name in ("sdlc", "worklog", "build-docx.sh"):
             path = SHARED / "tools" / name
             with self.subTest(tool=name):
                 self.assertTrue(path.is_file(), f"{path} does not exist")
@@ -497,6 +499,74 @@ class HazeshipRepositoryTests(unittest.TestCase):
         self.assertIn("checkpoint", content)
         self.assertIn("raise-pr", content)
         self.assertNotIn("gh pr create --", content)
+
+
+class WorklogTests(unittest.TestCase):
+    """tools/worklog is the system of record: dedup gate, status, links."""
+
+    WORKLOG = SHARED / "tools" / "worklog"
+
+    def run_wl(self, root, *args, actor="tester"):
+        return subprocess.run(
+            [sys.executable, str(self.WORKLOG), "--root", str(root),
+             "--actor", actor, *args],
+            capture_output=True,
+            text=True,
+        )
+
+    def test_full_lifecycle_and_dedup_gate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+
+            created = self.run_wl(
+                root, "new", "Fix export empty for client X",
+                "--source", "clickup", "--ref", "https://clickup.example/t/1",
+            )
+            self.assertEqual(created.returncode, 0, created.stderr)
+            item_id = created.stdout.strip()
+            self.assertRegex(item_id, r"^WL-\d{4}$")
+
+            # dedup: similar title refused with exit 4
+            dup = self.run_wl(
+                root, "new", "Export empty for client X",
+                "--source", "telegram",
+            )
+            self.assertEqual(dup.returncode, 4, dup.stderr)
+            self.assertIn(item_id, dup.stderr)
+            # dedup: same source ref refused even with a different title
+            dup2 = self.run_wl(
+                root, "new", "unrelated words entirely",
+                "--source", "clickup", "--ref", "https://clickup.example/t/1",
+            )
+            self.assertEqual(dup2.returncode, 4)
+            # --force creates anyway
+            forced = self.run_wl(
+                root, "new", "Export empty for client X",
+                "--source", "telegram", "--force",
+            )
+            self.assertEqual(forced.returncode, 0, forced.stderr)
+
+            # links, notes, status transitions land in the item + index
+            self.assertEqual(
+                self.run_wl(root, "link", item_id,
+                            "--pr", "https://github.com/x/y/pull/9").returncode, 0)
+            self.assertEqual(
+                self.run_wl(root, "note", item_id, "root cause found").returncode, 0)
+            self.assertEqual(
+                self.run_wl(root, "status", item_id, "done").returncode, 0)
+
+            shown = self.run_wl(root, "show", item_id).stdout
+            self.assertIn("status: done", shown)
+            self.assertIn("https://github.com/x/y/pull/9", shown)
+            self.assertIn("root cause found", shown)
+            self.assertIn("[tester]", shown)
+
+            index = (root / "worklog" / "INDEX.md").read_text(encoding="utf-8")
+            self.assertIn(item_id, index)
+            self.assertIn("done", index)
+
+            found = self.run_wl(root, "find", "export", "client").stdout
+            self.assertIn(item_id, found)
 
 
 class HazeshipSyncTests(unittest.TestCase):

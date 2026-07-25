@@ -1,6 +1,6 @@
 {
   "name": "hazeship",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "A cross-agent SDLC skill kit for any software project.",
   "author": {
     "name": "abhiyan52"
@@ -28,6 +28,7 @@
     "./skills/sdlc/ssh-readonly-investigation",
     "./skills/sdlc/triage",
     "./skills/sdlc/bugfix",
-    "./skills/sdlc/address-pr-comments"
+    "./skills/sdlc/address-pr-comments",
+    "./skills/sdlc/work-log"
   ]
 }

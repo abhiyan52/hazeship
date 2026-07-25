@@ -53,3 +53,9 @@ the feature branch (not a new bug branch) so they merge with the PR.
    `tools/sdlc gate <slug> awaiting-approval`, and after the user's sign-off
    (`tools/sdlc approve <slug>`),
    `tools/sdlc transition <slug> done`.
+
+## Work ledger
+
+If the project keeps a work ledger (`worklog/` — see the `work-log` skill),
+close the feature's item when the retro is signed off: a final note
+summarizing what shipped, then `tools/worklog status <id> done`.
