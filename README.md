@@ -1,11 +1,25 @@
 # Hazeship
 
-Reusable skills for Claude Code, Codex, and agents that support the Agent Skills format.
+Hazeship is a skills library for Claude Code, Codex, and any agent runtime
+that speaks the Agent Skills format. Skills are organized into categories
+under `skills/`, not built around one single workflow.
 
-The SDLC kit is an end-to-end feature loop — intake → design → plan →
-implement → validate → PR → retro — with a human approval gate at every
-stage. It is stack-agnostic: what it needs to know about your project (repos,
-commands, data-handling rules) it reads from one file you fill in.
+SDLC is the deepest category: an end-to-end feature loop — intake → design →
+plan → implement → validate → PR → retro — with a human approval gate at
+every stage. It's stack-agnostic: what it needs to know about your project
+(repos, commands, data-handling rules) it reads from one file you fill in.
+
+The other categories cover the rest of the day-to-day work: diagnosing hard
+bugs, designing deep modules, running relentless interviews, executing
+implementation plans test-first, generating clean diagrams, stripping AI
+patterns from prose, drafting short chat replies, keeping a Mac awake
+through a long run, and guarding every agent on the machine against
+catastrophic shell commands.
+
+Hazeship is meant to be one piece of a larger software factory, not a
+closed pipeline that ends at this repo.
+
+![Hazeship overview: the repo sits between a larger software factory and the agent runtimes it installs into, with the SDLC kit as one category alongside everything else.](docs/diagrams/hazeship-overview.png)
 
 ## Available skills
 
