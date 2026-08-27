@@ -1,2 +1,7 @@
 .worktrees/
 __pycache__/
+
+# Archify diagram build artifacts (regenerable via the archify skill);
+# only the exported docs/diagrams/*.png ships in the README.
+docs/diagrams/*.html
+docs/diagrams/*.json
