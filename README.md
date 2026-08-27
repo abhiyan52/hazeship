@@ -71,7 +71,7 @@ commands, data-handling rules) it reads from one file you fill in.
 
 ### Authoring
 
-- `setup-matt-pocock-skills` — One-time bootstrap for the engineering-skills issue tracker, triage labels, and domain doc layout.
+- `setup-hazeship` — One-time bootstrap for the engineering-skills issue tracker, triage labels, and domain doc layout.
 - `writing-for-agents` — Writing documents for agents to read (specs, plans, ADRs).
 - `writing-great-skills` — Reference for writing and editing skills well.
 

@@ -7,7 +7,7 @@ description: Break a plan, spec, or the current conversation into a set of trace
 
 Break a plan, spec, or conversation into a set of **tickets** — tracer-bullet vertical slices, each declaring the tickets that **block** it.
 
-The issue tracker and triage label vocabulary should have been provided to you — run `/setup-matt-pocock-skills` if not.
+The issue tracker and triage label vocabulary should have been provided to you — run `/setup-hazeship` if not.
 
 ## Process
 
@@ -56,7 +56,7 @@ Iterate until the user approves the breakdown.
 
 ### 5. Publish the tickets to the configured tracker
 
-Publish the approved tickets. **How** depends on the tracker `/setup-matt-pocock-skills` configured — the tickets are the same either way, only the shape of the blocking edges changes:
+Publish the approved tickets. **How** depends on the tracker `/setup-hazeship` configured — the tickets are the same either way, only the shape of the blocking edges changes:
 
 - **Local files** → write one file per ticket under
   **`docs/features/<feature-slug>/tickets/<NN>-<slug>.md`**, numbered from `01`

@@ -87,7 +87,7 @@ FULL_SKILLS_ARRAY = [
     "./skills/synthesis/to-tickets",
     "./skills/ops/deploy",
     "./skills/ops/deployment-monitor",
-    "./skills/authoring/setup-matt-pocock-skills",
+    "./skills/authoring/setup-hazeship",
     "./skills/authoring/writing-for-agents",
     "./skills/authoring/writing-great-skills",
     "./skills/diagramming/archify",
