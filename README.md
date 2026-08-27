@@ -68,6 +68,12 @@ commands, data-handling rules) it reads from one file you fill in.
 
 - `deploy` — Deploy workflow for the project's environments.
 - `deployment-monitor` — Monitor a deployment and surface issues as they appear.
+- `anti-sleep` — Keep a MacBook awake reliably with `caffeinate`, for a set duration or while a process runs. macOS only. Vendored from [davidondrej/skills](https://github.com/davidondrej/skills) (MIT).
+- `global-agent-guardrails` — One shared denylist of catastrophic shell commands enforced as a pre-exec guard across every AI coding agent on the machine. Installs to `~/.agents/hooks/` — see "Bundled hooks" below. Vendored from [davidondrej/skills](https://github.com/davidondrej/skills) (MIT).
+
+### Agent Orchestration
+
+- `goal-loop` — Write effective instructions for the `/goal` persistent self-checking agent loop (Codex, Claude Code, Hermes Agent). Vendored from [davidondrej/skills](https://github.com/davidondrej/skills) (MIT).
 
 ### Authoring
 
@@ -104,6 +110,22 @@ depend on under `skills/sdlc/_shared/`:
   above into a project.
 - `handoff-format.md`, `branch-commit-conventions.md` — the contracts every
   skill and subagent communicates through.
+
+### Bundled hooks (`hooks/`)
+
+`global-agent-guardrails` is the one skill in this kit that installs to your
+**machine**, not a project. The repo root's `hooks/` directory (`deny-dangerous.sh`,
+`dangerous-patterns.txt`, `test-guard.sh`) mirrors that skill's expected
+install path 1:1. Install once:
+
+```bash
+cp -r hooks ~/.agents/hooks   # or symlink, to track upstream pattern updates
+~/.agents/hooks/test-guard.sh # must end "failed: 0"
+```
+
+Then wire it into each agent per the skill's "Per-agent wiring" table —
+hazeship doesn't do that wiring for you, since the target configs are your
+own agent installs.
 
 ## Using the SDLC kit in a project
 

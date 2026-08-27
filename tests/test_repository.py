@@ -93,6 +93,9 @@ FULL_SKILLS_ARRAY = [
     "./skills/diagramming/archify",
     "./skills/communication/humanizer",
     "./skills/communication/instant-message-reply",
+    "./skills/ops/anti-sleep",
+    "./skills/ops/global-agent-guardrails",
+    "./skills/agent-orchestration/goal-loop",
 ]
 
 SHARED = ROOT / "skills" / "sdlc" / "_shared"
