@@ -1,0 +1,6 @@
+interface:
+  display_name: "Explain Me"
+  short_description: "Generate SDLC-grounded lessons explaining what is being built and why"
+  default_prompt: "Use $explain-me to explain this feature to me."
+policy:
+  allow_implicit_invocation: false
