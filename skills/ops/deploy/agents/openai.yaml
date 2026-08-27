@@ -1,0 +1,6 @@
+interface:
+  display_name: "Deploy"
+  short_description: "Deploy via the recorded runbook, go/no-go gated, ledger-logged"
+  default_prompt: "Use $deploy to deploy this, following the recorded runbook."
+policy:
+  allow_implicit_invocation: false

@@ -20,7 +20,7 @@ commands, data-handling rules) it reads from one file you fill in.
 - `review` — Two-lane PR review: correctness/security/quality, and design/requirements conformance.
 - `retro` — Post-merge retrospective that processes feedback, drives fixes, and captures SDLC lessons.
 - `team-handoff` — Create or close a question handoff to the human team (PM, design, eng, QA).
-- `teach` — Generate short lessons explaining what's being built, grounded in the feature's actual artifacts and code.
+- `explain-me` — Generate short lessons explaining what's being built, grounded in the feature's actual artifacts and code (wraps a generic `teach` skill for lesson mechanics, if installed).
 - `to-technical-doc` — Produce the shareable Technical Design document (+ DOCX) for stakeholders.
 - `checkpoint` — Create a commit in the project's required format, validating branch naming first.
 - `commit-pr` — One-shot commit + push + PR: runs `checkpoint`, pushes, then `raise-pr`.
@@ -32,6 +32,63 @@ commands, data-handling rules) it reads from one file you fill in.
 - `bugfix` — Lightweight bug loop: failing test first, minimal fix, Playwright on the affected flow, ship via `commit-pr` on a `bug/*` branch.
 - `address-pr-comments` — Fetch unresolved review threads, fix the clear-cut ones behind a per-batch test gate, and reply with commit + test evidence.
 - `work-log` — System of record for all work: dedup gate before starting anything, then status/actor/source (clickup, telegram, direct) and PR + ClickUp links per item, via `tools/worklog`.
+
+### Diagnostics
+
+- `diagnosing-bugs` — Diagnosis loop for hard bugs and performance regressions.
+
+### Architecture
+
+- `codebase-design` — Shared vocabulary for designing deep modules and finding deepening opportunities.
+- `domain-modeling` — Build and sharpen a project's domain model and ubiquitous language.
+- `improve-codebase-architecture` — Scan a codebase for deepening opportunities and present them as a visual report.
+
+### Interview
+
+- `grill-me` — A relentless interview to sharpen a plan or design.
+- `grill-with-docs` — Grilling that also keeps the domain glossary and ADRs current as it goes.
+- `grilling` — Base grilling trigger skill; use when the user wants their thinking stress-tested.
+- `wait-what` — Re-pitch the last message in plain, ASD-STE100 Simplified Technical English.
+
+### Implementation
+
+- `handoff` — Compact the current conversation into a handoff document for another agent to pick up.
+- `implement` — Implement one piece of work from a spec/ticket, test-first at the agreed seams.
+- `subagent-driven-development` — Execute an implementation plan by dispatching a fresh implementer subagent per task.
+- `tdd` — Test-driven development: red-green-refactor, integration tests.
+
+### Synthesis
+
+- `meeting-thread` — Pull one thread out of an AI-generated meeting note and write it up as its own doc.
+- `research` — Investigate a question against high-trust primary sources and capture the findings as a doc.
+- `to-spec` — Synthesize the current conversation into a spec, with no interview.
+- `to-tickets` — Break a plan/spec into tracer-bullet tickets with blocking edges, published to the configured tracker.
+
+### Ops
+
+- `deploy` — Deploy workflow for the project's environments.
+- `deployment-monitor` — Monitor a deployment and surface issues as they appear.
+- `anti-sleep` — Keep a MacBook awake reliably with `caffeinate`, for a set duration or while a process runs. macOS only. Vendored from [davidondrej/skills](https://github.com/davidondrej/skills) (MIT).
+- `global-agent-guardrails` — One shared denylist of catastrophic shell commands enforced as a pre-exec guard across every AI coding agent on the machine. Installs to `~/.agents/hooks/` — see "Bundled hooks" below. Vendored from [davidondrej/skills](https://github.com/davidondrej/skills) (MIT).
+
+### Agent Orchestration
+
+- `goal-loop` — Write effective instructions for the `/goal` persistent self-checking agent loop (Codex, Claude Code, Hermes Agent). Vendored from [davidondrej/skills](https://github.com/davidondrej/skills) (MIT).
+
+### Authoring
+
+- `setup-hazeship` — One-time bootstrap for the engineering-skills issue tracker, triage labels, and domain doc layout.
+- `writing-for-agents` — Writing documents for agents to read (specs, plans, ADRs).
+- `writing-great-skills` — Reference for writing and editing skills well.
+
+### Diagramming
+
+- `archify` — Create polished, validated architecture/workflow/sequence/dataflow/lifecycle diagrams as explorable HTML with light/dark themes and PNG/JPEG/WebP/SVG/WebM export.
+
+### Communication
+
+- `humanizer` — Rewrite AI-sounding text so it reads naturally, without changing what it says. Vendored from [blader/humanizer](https://github.com/blader/humanizer) (MIT).
+- `instant-message-reply` — Draft a short, natural-sounding reply to a chat message, grounded in the surrounding thread. Combines `wait-what`'s directness with `humanizer`'s AI-pattern check.
 
 ### Productivity
 
@@ -53,6 +110,22 @@ depend on under `skills/sdlc/_shared/`:
   above into a project.
 - `handoff-format.md`, `branch-commit-conventions.md` — the contracts every
   skill and subagent communicates through.
+
+### Bundled hooks (`hooks/`)
+
+`global-agent-guardrails` is the one skill in this kit that installs to your
+**machine**, not a project. The repo root's `hooks/` directory (`deny-dangerous.sh`,
+`dangerous-patterns.txt`, `test-guard.sh`) mirrors that skill's expected
+install path 1:1. Install once:
+
+```bash
+cp -r hooks ~/.agents/hooks   # or symlink, to track upstream pattern updates
+~/.agents/hooks/test-guard.sh # must end "failed: 0"
+```
+
+Then wire it into each agent per the skill's "Per-agent wiring" table —
+hazeship doesn't do that wiring for you, since the target configs are your
+own agent installs.
 
 ## Using the SDLC kit in a project
 
@@ -92,7 +165,7 @@ The feature loop, and who moves it:
 | final-pr | `/raise-pr` → `/review` | user merges |
 | retro | `/retro` | user signs off |
 
-`/checkpoint`, `/commit-pr`, `/qa-playwright`, `/seed-data`, `/teach`,
+`/checkpoint`, `/commit-pr`, `/qa-playwright`, `/seed-data`, `/explain-me`,
 `/team-handoff`, `/to-technical-doc`, `/persistent-memory` and
 `/ssh-readonly-investigation` are helpers, usable at any point.
 

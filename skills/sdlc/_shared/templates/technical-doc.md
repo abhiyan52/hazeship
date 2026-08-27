@@ -26,13 +26,7 @@ The main path, end to end, in the language of the product.
 2. <The system does Y.>
 3. <The user sees Z.>
 
-```mermaid
-%% Source: diagrams/golden-flow.mmd
-sequenceDiagram
-  actor User
-  User->>System: <action>
-  System-->>User: <result>
-```
+![Figure 1. Golden flow.](diagrams/golden-flow.png)
 
 *Figure 1 — The golden flow from <start> to <finish>.*
 
@@ -41,11 +35,7 @@ sequenceDiagram
 <The components involved and what each is responsible for. Name them by
 role ("the export worker"), never by module path.>
 
-```mermaid
-%% Source: diagrams/architecture.mmd
-flowchart LR
-  A[<component>] --> B[<component>]
-```
+![Figure 2. Subsystem map.](diagrams/architecture.png)
 
 *Figure 2 — Components and the direction data moves between them.*
 
@@ -63,15 +53,10 @@ No real or synthetic data examples: this document leaves the building.
 
 ## 5. States
 
-<The lifecycle of the central entity. A state diagram is expected whenever
-that entity has one.>
+<The lifecycle of the central entity. A lifecycle diagram is expected
+whenever that entity has states.>
 
-```mermaid
-%% Source: diagrams/states.mmd
-stateDiagram-v2
-  [*] --> <state>
-  <state> --> <state>: <trigger>
-```
+![Figure 3. Lifecycle diagram.](diagrams/states.png)
 
 *Figure 3 — Lifecycle of <entity>.*
 
